@@ -40,6 +40,7 @@ def load():
                            layout=r["layout"], software=r["software"], workload=r["workload"], load=r["load"], results=r["results"],
                            cost_metric=cm, gpu_hours=r["gpu_hours"], provenance=r.get("provenance", {}),
                            gph1m=cm["gpu_hours_per_1m_output_tokens"], vllm_args=e.get("VLLM_EXTRA_ARGS", ""),
+                           repeat_pct=[round((n["output_tok_s"] / o - 1) * 100, 1) for n, o in zip(r["results"], r["previous_run"]["output_tok_s"])] if r.get("previous_run") else None,
                            serve_command=r.get("serve_command"), worker_command=r.get("worker_command"), env=r.get("env", {}),
                            tok64=top["output_tok_s"], tok1=r["results"][0]["output_tok_s"]))
     return models

@@ -12,11 +12,23 @@
   },
   "layout": "TP4 x DP2 + expert-parallel, 2 node(s)",
   "vllm_args": "--trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41",
+  "serve_command": "vllm serve <model-dir> --served-model-name dsv41 --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 --data-parallel-address <head-node> --data-parallel-rpc-port 13345 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41 --port 8000",
+  "worker_command": "vllm serve <model-dir> --served-model-name dsv41 --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 --data-parallel-address <head-node> --data-parallel-rpc-port 13345 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41 --headless --data-parallel-start-rank <node-rank x DP_PER_NODE>",
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+  },
   "gpus": 8,
   "job_ids": {
     "download": "8487228",
     "build": "none",
-    "serve": "8487233"
+    "serve": "8488636"
   },
   "workload": {
     "tool": "vllm bench serve",
@@ -28,7 +40,7 @@
   },
   "load": {
     "weights_gib_per_gpu": 39.01,
-    "load_seconds": 125,
+    "load_seconds": 122,
     "kv_cache_tokens": 12724006,
     "max_concurrency_at_262144_ctx": 48.54
   },
@@ -37,38 +49,38 @@
       "concurrency": 1,
       "requests": 4,
       "failed": 0,
-      "output_tok_s": 47.8,
-      "mean_ttft_ms": 234.86,
-      "mean_tpot_ms": 20.08,
+      "output_tok_s": 47.14,
+      "mean_ttft_ms": 227.91,
+      "mean_tpot_ms": 20.4,
       "total_input_tokens": 4096,
       "total_output_tokens": 1024,
-      "duration_s": 21.4
+      "duration_s": 21.7
     },
     {
       "concurrency": 16,
       "requests": 64,
       "failed": 0,
-      "output_tok_s": 491.62,
-      "mean_ttft_ms": 724.85,
-      "mean_tpot_ms": 29.82,
+      "output_tok_s": 562.36,
+      "mean_ttft_ms": 538.76,
+      "mean_tpot_ms": 26.44,
       "total_input_tokens": 65536,
       "total_output_tokens": 16384,
-      "duration_s": 33.3
+      "duration_s": 29.1
     },
     {
       "concurrency": 64,
       "requests": 256,
       "failed": 0,
-      "output_tok_s": 1475.14,
-      "mean_ttft_ms": 989.4,
-      "mean_tpot_ms": 39.61,
+      "output_tok_s": 1445.77,
+      "mean_ttft_ms": 1019.83,
+      "mean_tpot_ms": 40.37,
       "total_input_tokens": 262144,
       "total_output_tokens": 65536,
-      "duration_s": 44.4
+      "duration_s": 45.3
     }
   ],
   "smoke_reply": {
-    "content": "Hello! I'm happy to help\u2014what can I do for you today?",
+    "content": "Hello! It's nice to meet you\u2014how can I help you today?",
     "has_reasoning_field": false
   },
   "cost_metric": {
@@ -76,19 +88,32 @@
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "run_duration_s": 44.4,
+    "run_duration_s": 45.3,
     "gpus": 8,
-    "run_gpu_hours": 0.0987,
-    "gpu_hours_per_1m_output_tokens": 1.506
+    "run_gpu_hours": 0.1007,
+    "gpu_hours_per_1m_output_tokens": 1.537
   },
   "gpu_hours": {
     "download": 0.16,
     "build": 0.29,
-    "serve": 0.953,
-    "total": 1.4,
+    "serve": 0.916,
+    "total": 1.37,
     "notes": [
       "download cost kept from the earlier real download (this run only verified the files)",
       "container build cost is the measured shared build (this run reused the image)"
     ]
+  },
+  "previous_run": {
+    "output_tok_s": [
+      47.8,
+      491.62,
+      1475.14
+    ],
+    "concurrency": [
+      1,
+      16,
+      64
+    ],
+    "note": "Earlier run of the same model (before the final pipeline run), kept to show run-to-run variation."
   }
 }

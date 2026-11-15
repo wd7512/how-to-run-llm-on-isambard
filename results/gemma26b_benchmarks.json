@@ -12,11 +12,23 @@
   },
   "layout": "TP1 x DP1, 1 node(s)",
   "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
+  "serve_command": "vllm serve <model-dir> --served-model-name gemma26b --tensor-parallel-size 1 --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice --port 8000",
+  "worker_command": null,
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+  },
   "gpus": 1,
   "job_ids": {
     "download": "8487200",
     "build": "none",
-    "serve": "8487204"
+    "serve": "8488677"
   },
   "workload": {
     "tool": "vllm bench serve",
@@ -28,7 +40,7 @@
   },
   "load": {
     "weights_gib_per_gpu": 48.54,
-    "load_seconds": 13,
+    "load_seconds": 12,
     "kv_cache_tokens": 1112876,
     "max_concurrency_at_262144_ctx": 4.25
   },
@@ -37,34 +49,34 @@
       "concurrency": 1,
       "requests": 4,
       "failed": 0,
-      "output_tok_s": 207.99,
-      "mean_ttft_ms": 44.15,
-      "mean_tpot_ms": 4.65,
+      "output_tok_s": 206.72,
+      "mean_ttft_ms": 45.98,
+      "mean_tpot_ms": 4.67,
       "total_input_tokens": 4096,
       "total_output_tokens": 1024,
-      "duration_s": 4.9
+      "duration_s": 5.0
     },
     {
       "concurrency": 16,
       "requests": 64,
       "failed": 0,
-      "output_tok_s": 1324.3,
-      "mean_ttft_ms": 349.47,
-      "mean_tpot_ms": 10.75,
+      "output_tok_s": 1273.49,
+      "mean_ttft_ms": 357.56,
+      "mean_tpot_ms": 11.2,
       "total_input_tokens": 65536,
       "total_output_tokens": 16384,
-      "duration_s": 12.4
+      "duration_s": 12.9
     },
     {
       "concurrency": 64,
       "requests": 256,
       "failed": 0,
-      "output_tok_s": 2702.8,
-      "mean_ttft_ms": 539.05,
-      "mean_tpot_ms": 21.6,
+      "output_tok_s": 2599.91,
+      "mean_ttft_ms": 561.77,
+      "mean_tpot_ms": 22.45,
       "total_input_tokens": 262144,
       "total_output_tokens": 65536,
-      "duration_s": 24.2
+      "duration_s": 25.2
     }
   ],
   "smoke_reply": {
@@ -75,18 +87,31 @@
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "run_duration_s": 24.2,
+    "run_duration_s": 25.2,
     "gpus": 1,
-    "run_gpu_hours": 0.0067,
-    "gpu_hours_per_1m_output_tokens": 0.103
+    "run_gpu_hours": 0.007,
+    "gpu_hours_per_1m_output_tokens": 0.107
   },
   "gpu_hours": {
     "download": 0.059,
     "build": 0.29,
-    "serve": 0.065,
+    "serve": 0.064,
     "total": 0.41,
     "notes": [
       "container build cost is the measured shared build (this run reused the image)"
     ]
+  },
+  "previous_run": {
+    "output_tok_s": [
+      207.99,
+      1324.3,
+      2702.8
+    ],
+    "concurrency": [
+      1,
+      16,
+      64
+    ],
+    "note": "Earlier run of the same model (before the final pipeline run), kept to show run-to-run variation."
   }
 }

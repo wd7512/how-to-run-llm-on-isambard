@@ -268,7 +268,7 @@ function overview() {
     <h2>Caveats</h2>
     <ul class="caveats">
       <li>Short prompts only. Nothing here measures a 250k-token prompt (prefill time or long-context decode speed), and a different input/output ratio would change the cost figure.</li>
-      <li>One run per model, no repeats, so no error bars.</li>
+      <li>Repeatability: each model was run twice. Seven of nine agreed within about 4% (most within 1%) at every concurrency; DeepSeek (+14% at 16 users) and GLM (up to +23% at 64 users, eager mode) varied more, so treat the two-node numbers as roughly &plusmn;20%. The numbers shown are the final run.</li>
           </ul>
   </section>`;
   scatter($("c-scatter"), null);
@@ -323,7 +323,7 @@ MODEL=${m.key} python3 scripts/collect_results.py   # after the serve job finish
   <section class="card"><h2>Setup and caveats</h2>
     <p class="desc">${m.layout}. Weights ${load.weights_gib_per_gpu ? fmt(load.weights_gib_per_gpu, 1) + " GiB per GPU, " : ""}${load.load_seconds ? "loaded in about " + fmt(load.load_seconds) + " s. " : ""}${kv ? "KV cache " + fmt(kv) + " tokens, " + fmt(ctx, 1) + " concurrent 262k-token contexts." : ""}</p>
     <ul class="caveats">${[...m.caveats,
-      "Short prompts only. Nothing here measures a 250k-token prompt.", "One working run, no repeats, so no error bars."].map(c => `<li>${c}</li>`).join("")}</ul>
+      "Short prompts only. Nothing here measures a 250k-token prompt.", m.repeat_pct ? `Run twice: the final run\'s output tok/s differed from the earlier run by ${m.repeat_pct.map(x => (x > 0 ? "+" : "") + x + "%").join(" / ")} at 1 / 16 / 64 users. The numbers shown are the final run.` : "One run, no repeats, so no error bars."].map(c => `<li>${c}</li>`).join("")}</ul>
     <p class="meta">Revision <code>${esc(m.revision.slice(0, 12))}</code> &middot; ${prov}</p></section>`;
   columns($("c-throughput"), bench, "tps", d => `${d.c} concurrent: ${fmt(d.tps, 1)} tok/s aggregate`, m.tok1 < 20 ? 1 : 0);
   columns($("c-peruser"), bench.map(d => ({...d, pu: 1000 / d.tpot})), "pu", d => `${d.c} concurrent: ${fmt(d.pu, 1)} tok/s per user`, m.tok1 < 20 ? 1 : 0);

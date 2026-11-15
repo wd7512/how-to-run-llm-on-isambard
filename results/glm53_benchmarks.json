@@ -1,29 +1,47 @@
 {
   "model": "zai-org/GLM-5.3-Flash",
   "preset": "glm53",
+  "revision": "46a050bec13002ad29ee795c16e61cf4fa3c4a9c",
   "date": "2026-11-15",
-  "system": "Isambard-AI Phase 2, 2 nodes x 4 GH200 (96 GiB HBM each) = 8 GPUs",
+  "system": "Isambard-AI Phase 2, 8 x GH200 (96 GiB HBM each), 2 nodes",
   "software": {
     "vllm": "0.33.0",
     "torch": "2.14.0+cu130",
     "cuda": "13.0",
-    "driver": "580.178.04"
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
   },
-  "layout": "tensor-parallel 4 x data-parallel 2 + expert-parallel, --enforce-eager (no CUDA graphs)",
-  "mode": "eager",
+  "layout": "TP4 x DP2 + expert-parallel, 2 node(s)",
+  "vllm_args": "--tool-call-parser glm47 --enable-auto-tool-choice --reasoning-parser glm47 --disable-flashinfer-autotune --enforce-eager",
+  "serve_command": "vllm serve <model-dir> --served-model-name glm53 --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 --data-parallel-address <head-node> --data-parallel-rpc-port 13345 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --tool-call-parser glm47 --enable-auto-tool-choice --reasoning-parser glm47 --disable-flashinfer-autotune --enforce-eager --port 8000",
+  "worker_command": "vllm serve <model-dir> --served-model-name glm53 --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 --data-parallel-address <head-node> --data-parallel-rpc-port 13345 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --tool-call-parser glm47 --enable-auto-tool-choice --reasoning-parser glm47 --disable-flashinfer-autotune --enforce-eager --headless --data-parallel-start-rank <node-rank x DP_PER_NODE>",
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+  },
+  "gpus": 8,
+  "job_ids": {
+    "download": "8488645",
+    "build": "none",
+    "serve": "8488646"
+  },
   "workload": {
     "tool": "vllm bench serve",
     "dataset": "random",
     "input_tokens_per_request": 1024,
     "output_tokens_per_request": 256,
-    "requests_per_level": "4 x concurrency",
-    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
   },
   "load": {
     "weights_gib_per_gpu": 42.07,
-    "load_seconds": 43,
-    "kv_cache_gib_per_gpu": 39.75,
-    "kv_cache_tokens_per_dp_rank": 3460083,
+    "load_seconds": 39,
+    "kv_cache_tokens": 3460083,
     "max_concurrency_at_262144_ctx": 13.2
   },
   "results": [
@@ -31,49 +49,71 @@
       "concurrency": 1,
       "requests": 4,
       "failed": 0,
-      "output_tok_s": 6.85,
-      "mean_ttft_ms": 3748.91,
-      "mean_tpot_ms": 131.86
+      "output_tok_s": 7.26,
+      "mean_ttft_ms": 1647.84,
+      "mean_tpot_ms": 131.81,
+      "total_input_tokens": 4096,
+      "total_output_tokens": 1024,
+      "duration_s": 141.0
     },
     {
       "concurrency": 16,
       "requests": 64,
       "failed": 0,
-      "output_tok_s": 91.62,
-      "mean_ttft_ms": 4051.81,
-      "mean_tpot_ms": 159.3
+      "output_tok_s": 105.87,
+      "mean_ttft_ms": 1513.1,
+      "mean_tpot_ms": 145.66,
+      "total_input_tokens": 65536,
+      "total_output_tokens": 16384,
+      "duration_s": 154.8
     },
     {
       "concurrency": 64,
       "requests": 256,
       "failed": 0,
-      "output_tok_s": 364.55,
-      "mean_ttft_ms": 3599.7,
-      "mean_tpot_ms": 159.93
+      "output_tok_s": 449.38,
+      "mean_ttft_ms": 1028.39,
+      "mean_tpot_ms": 138.62,
+      "total_input_tokens": 262144,
+      "total_output_tokens": 65536,
+      "duration_s": 145.8
     }
   ],
+  "smoke_reply": {
+    "content": "Hello! It's great to meet you, and I'm happy to help with whatever you need today.",
+    "has_reasoning_field": true
+  },
   "cost_metric": {
     "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "input_to_output_ratio": 4,
-    "run_duration_s": 179.8,
+    "run_duration_s": 145.8,
     "gpus": 8,
-    "run_gpu_hours": 0.3995,
-    "gpu_hours_per_1m_output_tokens": 6.096
+    "run_gpu_hours": 0.324,
+    "gpu_hours_per_1m_output_tokens": 4.945
   },
-  "revision": "46a050bec13002ad29ee795c16e61cf4fa3c4a9c",
-  "gpus": 8,
   "gpu_hours": {
     "download": 0.09,
     "build": 0.29,
-    "serve": 1.95,
-    "total": 2.33
+    "serve": 1.758,
+    "total": 2.14,
+    "notes": [
+      "download cost kept from the earlier real download (this run only verified the files)",
+      "container build cost is the measured shared build (this run reused the image)"
+    ]
   },
-  "provenance": {
-    "scripts_commit": "2ceddf0",
-    "token_counts": "nominal",
-    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
+  "previous_run": {
+    "output_tok_s": [
+      6.85,
+      91.62,
+      364.55
+    ],
+    "concurrency": [
+      1,
+      16,
+      64
+    ],
+    "note": "Earlier run of the same model (before the final pipeline run), kept to show run-to-run variation."
   }
 }

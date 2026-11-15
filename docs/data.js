@@ -41,7 +41,7 @@ window.SITE = {
    },
    "load": {
     "weights_gib_per_gpu": 39.01,
-    "load_seconds": 125,
+    "load_seconds": 122,
     "kv_cache_tokens": 12724006,
     "max_concurrency_at_262144_ctx": 48.54
    },
@@ -50,34 +50,34 @@ window.SITE = {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 47.8,
-     "mean_ttft_ms": 234.86,
-     "mean_tpot_ms": 20.08,
+     "output_tok_s": 47.14,
+     "mean_ttft_ms": 227.91,
+     "mean_tpot_ms": 20.4,
      "total_input_tokens": 4096,
      "total_output_tokens": 1024,
-     "duration_s": 21.4
+     "duration_s": 21.7
     },
     {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 491.62,
-     "mean_ttft_ms": 724.85,
-     "mean_tpot_ms": 29.82,
+     "output_tok_s": 562.36,
+     "mean_ttft_ms": 538.76,
+     "mean_tpot_ms": 26.44,
      "total_input_tokens": 65536,
      "total_output_tokens": 16384,
-     "duration_s": 33.3
+     "duration_s": 29.1
     },
     {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 1475.14,
-     "mean_ttft_ms": 989.4,
-     "mean_tpot_ms": 39.61,
+     "output_tok_s": 1445.77,
+     "mean_ttft_ms": 1019.83,
+     "mean_tpot_ms": 40.37,
      "total_input_tokens": 262144,
      "total_output_tokens": 65536,
-     "duration_s": 44.4
+     "duration_s": 45.3
     }
    ],
    "cost_metric": {
@@ -85,29 +85,43 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "run_duration_s": 44.4,
+    "run_duration_s": 45.3,
     "gpus": 8,
-    "run_gpu_hours": 0.0987,
-    "gpu_hours_per_1m_output_tokens": 1.506
+    "run_gpu_hours": 0.1007,
+    "gpu_hours_per_1m_output_tokens": 1.537
    },
    "gpu_hours": {
     "download": 0.16,
     "build": 0.29,
-    "serve": 0.953,
-    "total": 1.4,
+    "serve": 0.916,
+    "total": 1.37,
     "notes": [
      "download cost kept from the earlier real download (this run only verified the files)",
      "container build cost is the measured shared build (this run reused the image)"
     ]
    },
    "provenance": {},
-   "gph1m": 1.506,
+   "gph1m": 1.537,
    "vllm_args": "--trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41",
-   "serve_command": null,
-   "worker_command": null,
-   "env": {},
-   "tok64": 1475.14,
-   "tok1": 47.8
+   "repeat_pct": [
+    -1.4,
+    14.4,
+    -2.0
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name dsv41 --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 --data-parallel-address <head-node> --data-parallel-rpc-port 13345 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41 --port 8000",
+   "worker_command": "vllm serve <model-dir> --served-model-name dsv41 --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 --data-parallel-address <head-node> --data-parallel-rpc-port 13345 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41 --headless --data-parallel-start-rank <node-rank x DP_PER_NODE>",
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 1445.77,
+   "tok1": 47.14
   },
   {
    "order": 2,
@@ -132,26 +146,25 @@ window.SITE = {
    "time_cap": "00:40:00",
    "revision": "46a050bec13002ad29ee795c16e61cf4fa3c4a9c",
    "date": "2026-11-15",
-   "layout": "tensor-parallel 4 x data-parallel 2 + expert-parallel, --enforce-eager (no CUDA graphs)",
+   "layout": "TP4 x DP2 + expert-parallel, 2 node(s)",
    "software": {
     "vllm": "0.33.0",
     "torch": "2.14.0+cu130",
     "cuda": "13.0",
-    "driver": "580.178.04"
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
    },
    "workload": {
     "tool": "vllm bench serve",
     "dataset": "random",
     "input_tokens_per_request": 1024,
     "output_tokens_per_request": 256,
-    "requests_per_level": "4 x concurrency",
-    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
    },
    "load": {
     "weights_gib_per_gpu": 42.07,
-    "load_seconds": 43,
-    "kv_cache_gib_per_gpu": 39.75,
-    "kv_cache_tokens_per_dp_rank": 3460083,
+    "load_seconds": 39,
+    "kv_cache_tokens": 3460083,
     "max_concurrency_at_262144_ctx": 13.2
    },
    "results": [
@@ -159,25 +172,34 @@ window.SITE = {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 6.85,
-     "mean_ttft_ms": 3748.91,
-     "mean_tpot_ms": 131.86
+     "output_tok_s": 7.26,
+     "mean_ttft_ms": 1647.84,
+     "mean_tpot_ms": 131.81,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 141.0
     },
     {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 91.62,
-     "mean_ttft_ms": 4051.81,
-     "mean_tpot_ms": 159.3
+     "output_tok_s": 105.87,
+     "mean_ttft_ms": 1513.1,
+     "mean_tpot_ms": 145.66,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 154.8
     },
     {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 364.55,
-     "mean_ttft_ms": 3599.7,
-     "mean_tpot_ms": 159.93
+     "output_tok_s": 449.38,
+     "mean_ttft_ms": 1028.39,
+     "mean_tpot_ms": 138.62,
+     "total_input_tokens": 262144,
+     "total_output_tokens": 65536,
+     "duration_s": 145.8
     }
    ],
    "cost_metric": {
@@ -185,30 +207,43 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "input_to_output_ratio": 4,
-    "run_duration_s": 179.8,
+    "run_duration_s": 145.8,
     "gpus": 8,
-    "run_gpu_hours": 0.3995,
-    "gpu_hours_per_1m_output_tokens": 6.096
+    "run_gpu_hours": 0.324,
+    "gpu_hours_per_1m_output_tokens": 4.945
    },
    "gpu_hours": {
     "download": 0.09,
     "build": 0.29,
-    "serve": 1.95,
-    "total": 2.33
+    "serve": 1.758,
+    "total": 2.14,
+    "notes": [
+     "download cost kept from the earlier real download (this run only verified the files)",
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
    },
-   "provenance": {
-    "scripts_commit": "2ceddf0",
-    "token_counts": "nominal",
-    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
-   },
-   "gph1m": 6.096,
+   "provenance": {},
+   "gph1m": 4.945,
    "vllm_args": "--tool-call-parser glm47 --enable-auto-tool-choice --reasoning-parser glm47 --disable-flashinfer-autotune --enforce-eager",
-   "serve_command": null,
-   "worker_command": null,
-   "env": {},
-   "tok64": 364.55,
-   "tok1": 6.85
+   "repeat_pct": [
+    6.0,
+    15.6,
+    23.3
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name glm53 --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 --data-parallel-address <head-node> --data-parallel-rpc-port 13345 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --tool-call-parser glm47 --enable-auto-tool-choice --reasoning-parser glm47 --disable-flashinfer-autotune --enforce-eager --port 8000",
+   "worker_command": "vllm serve <model-dir> --served-model-name glm53 --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 --data-parallel-address <head-node> --data-parallel-rpc-port 13345 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --tool-call-parser glm47 --enable-auto-tool-choice --reasoning-parser glm47 --disable-flashinfer-autotune --enforce-eager --headless --data-parallel-start-rank <node-rank x DP_PER_NODE>",
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 449.38,
+   "tok1": 7.26
   },
   {
    "order": 3,
@@ -249,18 +284,18 @@ window.SITE = {
    },
    "load": {
     "weights_gib_per_gpu": 51.01,
-    "load_seconds": 10,
-    "kv_cache_tokens": 531547,
-    "max_concurrency_at_262144_ctx": 2.03
+    "load_seconds": 11,
+    "kv_cache_tokens": 508156,
+    "max_concurrency_at_262144_ctx": 1.94
    },
    "results": [
     {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 57.32,
-     "mean_ttft_ms": 124.54,
-     "mean_tpot_ms": 17.02,
+     "output_tok_s": 57.23,
+     "mean_ttft_ms": 130.13,
+     "mean_tpot_ms": 17.03,
      "total_input_tokens": 4096,
      "total_output_tokens": 1024,
      "duration_s": 17.9
@@ -269,23 +304,23 @@ window.SITE = {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 641.13,
-     "mean_ttft_ms": 1223.73,
+     "output_tok_s": 642.38,
+     "mean_ttft_ms": 1211.59,
      "mean_tpot_ms": 20.23,
      "total_input_tokens": 65536,
      "total_output_tokens": 16384,
-     "duration_s": 25.6
+     "duration_s": 25.5
     },
     {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 1413.15,
-     "mean_ttft_ms": 2210.2,
-     "mean_tpot_ms": 36.71,
+     "output_tok_s": 1421.49,
+     "mean_ttft_ms": 2175.46,
+     "mean_tpot_ms": 36.58,
      "total_input_tokens": 262144,
      "total_output_tokens": 65536,
-     "duration_s": 46.4
+     "duration_s": 46.1
     }
    ],
    "cost_metric": {
@@ -293,29 +328,43 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "run_duration_s": 46.4,
+    "run_duration_s": 46.1,
     "gpus": 1,
-    "run_gpu_hours": 0.0129,
-    "gpu_hours_per_1m_output_tokens": 0.197
+    "run_gpu_hours": 0.0128,
+    "gpu_hours_per_1m_output_tokens": 0.195
    },
    "gpu_hours": {
     "download": 0.03,
     "build": 0.29,
-    "serve": 0.078,
-    "total": 0.4,
+    "serve": 0.071,
+    "total": 0.39,
     "notes": [
      "download cost kept from the earlier real download (this run only verified the files)",
      "container build cost is the measured shared build (this run reused the image)"
     ]
    },
    "provenance": {},
-   "gph1m": 0.197,
+   "gph1m": 0.195,
    "vllm_args": "--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 --mm-encoder-tp-mode data",
-   "serve_command": null,
+   "repeat_pct": [
+    -0.2,
+    0.2,
+    0.6
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name qwen38 --tensor-parallel-size 1 --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 --mm-encoder-tp-mode data --port 8000",
    "worker_command": null,
-   "env": {},
-   "tok64": 1413.15,
-   "tok1": 57.32
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 1421.49,
+   "tok1": 57.23
   },
   {
    "order": 4,
@@ -341,25 +390,25 @@ window.SITE = {
    "time_cap": "00:30:00",
    "revision": "2a247be0c0aec895ccb0ac7ca92229ec6df37288",
    "date": "2026-11-15",
-   "layout": "2 GPUs, TP2 + expert-parallel, --attention-backend FLASHINFER",
+   "layout": "TP2 x DP1 + expert-parallel, 1 node(s)",
    "software": {
     "vllm": "0.33.0",
     "torch": "2.14.0+cu130",
     "cuda": "13.0",
-    "driver": "580.178.04"
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
    },
    "workload": {
     "tool": "vllm bench serve",
     "dataset": "random",
     "input_tokens_per_request": 1024,
     "output_tokens_per_request": 256,
-    "requests_per_level": "4 x concurrency",
-    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
    },
    "load": {
     "weights_gib_per_gpu": 37.2,
-    "load_seconds": 15,
-    "kv_cache_tokens": 2925020,
+    "load_seconds": 16,
+    "kv_cache_tokens": 2924966,
     "max_concurrency_at_262144_ctx": 11.16
    },
    "results": [
@@ -367,25 +416,34 @@ window.SITE = {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 196.32,
-     "mean_ttft_ms": 74.22,
-     "mean_tpot_ms": 4.82
+     "output_tok_s": 193.77,
+     "mean_ttft_ms": 77.07,
+     "mean_tpot_ms": 4.88,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 5.3
     },
     {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 1721.47,
-     "mean_ttft_ms": 232.51,
-     "mean_tpot_ms": 8.4
+     "output_tok_s": 1714.95,
+     "mean_ttft_ms": 236.89,
+     "mean_tpot_ms": 8.42,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 9.6
     },
     {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 3985.52,
-     "mean_ttft_ms": 530.92,
-     "mean_tpot_ms": 14.0
+     "output_tok_s": 3982.67,
+     "mean_ttft_ms": 539.43,
+     "mean_tpot_ms": 13.97,
+     "total_input_tokens": 262144,
+     "total_output_tokens": 65536,
+     "duration_s": 16.5
     }
    ],
    "cost_metric": {
@@ -393,30 +451,43 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "input_to_output_ratio": 4,
-    "run_duration_s": 16.4,
+    "run_duration_s": 16.5,
     "gpus": 2,
-    "run_gpu_hours": 0.0091,
+    "run_gpu_hours": 0.0092,
     "gpu_hours_per_1m_output_tokens": 0.139
    },
    "gpu_hours": {
     "download": 0.03,
     "build": 0.29,
-    "serve": 0.08,
-    "total": 0.4
+    "serve": 0.083,
+    "total": 0.4,
+    "notes": [
+     "download cost kept from the earlier real download (this run only verified the files)",
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
    },
-   "provenance": {
-    "scripts_commit": "e273a74",
-    "token_counts": "nominal",
-    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
-   },
+   "provenance": {},
    "gph1m": 0.139,
    "vllm_args": "--attention-backend FLASHINFER",
-   "serve_command": null,
+   "repeat_pct": [
+    -1.3,
+    -0.4,
+    -0.1
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name flint --tensor-parallel-size 2 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --attention-backend FLASHINFER --port 8000",
    "worker_command": null,
-   "env": {},
-   "tok64": 3985.52,
-   "tok1": 196.32
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 3982.67,
+   "tok1": 193.77
   },
   {
    "order": 5,
@@ -441,24 +512,24 @@ window.SITE = {
    "time_cap": "00:30:00",
    "revision": "f657ba2f7d24c9adc5730675baaa2d34de878a49",
    "date": "2026-11-15",
-   "layout": "tensor-parallel 4, 1 node",
+   "layout": "TP4 x DP1, 1 node(s)",
    "software": {
     "vllm": "0.33.0",
     "torch": "2.14.0+cu130",
     "cuda": "13.0",
-    "driver": "580.178.04"
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
    },
    "workload": {
     "tool": "vllm bench serve",
     "dataset": "random",
     "input_tokens_per_request": 1024,
     "output_tokens_per_request": 256,
-    "requests_per_level": "4 x concurrency",
-    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
    },
    "load": {
     "weights_gib_per_gpu": 41.57,
-    "load_seconds": 98,
+    "load_seconds": 101,
     "kv_cache_tokens": 4322991,
     "max_concurrency_at_262144_ctx": 16.49
    },
@@ -467,25 +538,34 @@ window.SITE = {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 230.21,
-     "mean_ttft_ms": 98.96,
-     "mean_tpot_ms": 3.97
+     "output_tok_s": 230.6,
+     "mean_ttft_ms": 100.52,
+     "mean_tpot_ms": 3.96,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 4.4
     },
     {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 1415.61,
-     "mean_ttft_ms": 342.09,
-     "mean_tpot_ms": 9.99
+     "output_tok_s": 1400.66,
+     "mean_ttft_ms": 339.21,
+     "mean_tpot_ms": 10.13,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 11.7
     },
     {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 2379.63,
-     "mean_ttft_ms": 614.8,
-     "mean_tpot_ms": 24.53
+     "output_tok_s": 2369.59,
+     "mean_ttft_ms": 619.98,
+     "mean_tpot_ms": 24.63,
+     "total_input_tokens": 262144,
+     "total_output_tokens": 65536,
+     "duration_s": 27.7
     }
    ],
    "cost_metric": {
@@ -493,30 +573,43 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "input_to_output_ratio": 4,
-    "run_duration_s": 27.5,
+    "run_duration_s": 27.7,
     "gpus": 4,
-    "run_gpu_hours": 0.0306,
-    "gpu_hours_per_1m_output_tokens": 0.467
+    "run_gpu_hours": 0.0308,
+    "gpu_hours_per_1m_output_tokens": 0.469
    },
    "gpu_hours": {
     "download": 0.05,
     "build": 0.29,
-    "serve": 0.57,
-    "total": 0.91
+    "serve": 0.559,
+    "total": 0.9,
+    "notes": [
+     "download cost kept from the earlier real download (this run only verified the files)",
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
    },
-   "provenance": {
-    "scripts_commit": "03c0f65",
-    "token_counts": "nominal",
-    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
-   },
-   "gph1m": 0.467,
+   "provenance": {},
+   "gph1m": 0.469,
    "vllm_args": "--trust-remote-code --generation-config vllm --tool-call-parser mimo --enable-auto-tool-choice --reasoning-parser mimo",
-   "serve_command": null,
+   "repeat_pct": [
+    0.2,
+    -1.1,
+    -0.4
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name mimo26 --tensor-parallel-size 4 --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --trust-remote-code --generation-config vllm --tool-call-parser mimo --enable-auto-tool-choice --reasoning-parser mimo --port 8000",
    "worker_command": null,
-   "env": {},
-   "tok64": 2379.63,
-   "tok1": 230.21
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 2369.59,
+   "tok1": 230.6
   },
   {
    "order": 6,
@@ -541,24 +634,24 @@ window.SITE = {
    "time_cap": "00:30:00",
    "revision": "812d96e10a0dd82b69d749e68693698cf6c36daa",
    "date": "2026-11-15",
-   "layout": "tensor-parallel 4 + expert-parallel, 1 node, n-gram embedding offloaded to host RAM",
+   "layout": "TP4 x DP1 + expert-parallel, 1 node(s)",
    "software": {
     "vllm": "0.33.0",
     "torch": "2.14.0+cu130",
     "cuda": "13.0",
-    "driver": "580.178.04"
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
    },
    "workload": {
     "tool": "vllm bench serve",
     "dataset": "random",
     "input_tokens_per_request": 1024,
     "output_tokens_per_request": 256,
-    "requests_per_level": "4 x concurrency",
-    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
    },
    "load": {
     "weights_gib_per_gpu": 60.75,
-    "load_seconds": 46,
+    "load_seconds": 61,
     "kv_cache_tokens": 1674853,
     "max_concurrency_at_262144_ctx": 6.39
    },
@@ -567,25 +660,34 @@ window.SITE = {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 156.01,
-     "mean_ttft_ms": 176.43,
-     "mean_tpot_ms": 5.74
+     "output_tok_s": 154.07,
+     "mean_ttft_ms": 188.84,
+     "mean_tpot_ms": 5.77,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 6.6
     },
     {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 1072.17,
-     "mean_ttft_ms": 722.8,
-     "mean_tpot_ms": 12.13
+     "output_tok_s": 1070.96,
+     "mean_ttft_ms": 792.39,
+     "mean_tpot_ms": 11.88,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 15.3
     },
     {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 2660.23,
-     "mean_ttft_ms": 610.36,
-     "mean_tpot_ms": 21.7
+     "output_tok_s": 2647.4,
+     "mean_ttft_ms": 612.59,
+     "mean_tpot_ms": 21.8,
+     "total_input_tokens": 262144,
+     "total_output_tokens": 65536,
+     "duration_s": 24.8
     }
    ],
    "cost_metric": {
@@ -593,30 +695,43 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "input_to_output_ratio": 4,
-    "run_duration_s": 24.6,
+    "run_duration_s": 24.8,
     "gpus": 4,
-    "run_gpu_hours": 0.0274,
-    "gpu_hours_per_1m_output_tokens": 0.418
+    "run_gpu_hours": 0.0276,
+    "gpu_hours_per_1m_output_tokens": 0.42
    },
    "gpu_hours": {
     "download": 0.08,
     "build": 0.29,
-    "serve": 0.36,
-    "total": 0.73
+    "serve": 0.406,
+    "total": 0.78,
+    "notes": [
+     "download cost kept from the earlier real download (this run only verified the files)",
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
    },
-   "provenance": {
-    "scripts_commit": "95f5395",
-    "token_counts": "nominal",
-    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
-   },
-   "gph1m": 0.418,
+   "provenance": {},
+   "gph1m": 0.42,
    "vllm_args": "--max-num-seqs 256 --enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3",
-   "serve_command": null,
+   "repeat_pct": [
+    -1.2,
+    -0.1,
+    -0.5
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name qwen38flash --tensor-parallel-size 4 --enable-expert-parallel --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --max-num-seqs 256 --enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 --port 8000",
    "worker_command": null,
-   "env": {},
-   "tok64": 2660.23,
-   "tok1": 156.01
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 2647.4,
+   "tok1": 154.07
   },
   {
    "order": 7,
@@ -659,7 +774,7 @@ window.SITE = {
    },
    "load": {
     "weights_gib_per_gpu": 30.38,
-    "load_seconds": 8,
+    "load_seconds": 9,
     "kv_cache_tokens": 834085,
     "max_concurrency_at_262144_ctx": 3.18
    },
@@ -668,9 +783,9 @@ window.SITE = {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 80.2,
-     "mean_ttft_ms": 83.46,
-     "mean_tpot_ms": 12.19,
+     "output_tok_s": 80.12,
+     "mean_ttft_ms": 83.04,
+     "mean_tpot_ms": 12.2,
      "total_input_tokens": 4096,
      "total_output_tokens": 1024,
      "duration_s": 12.8
@@ -679,9 +794,9 @@ window.SITE = {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 856.85,
-     "mean_ttft_ms": 745.06,
-     "mean_tpot_ms": 15.8,
+     "output_tok_s": 857.51,
+     "mean_ttft_ms": 729.98,
+     "mean_tpot_ms": 15.85,
      "total_input_tokens": 65536,
      "total_output_tokens": 16384,
      "duration_s": 19.1
@@ -690,12 +805,12 @@ window.SITE = {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 1646.55,
-     "mean_ttft_ms": 1399.98,
-     "mean_tpot_ms": 33.46,
+     "output_tok_s": 1656.22,
+     "mean_ttft_ms": 1416.89,
+     "mean_tpot_ms": 33.16,
      "total_input_tokens": 262144,
      "total_output_tokens": 65536,
-     "duration_s": 39.8
+     "duration_s": 39.6
     }
    ],
    "cost_metric": {
@@ -703,28 +818,42 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "run_duration_s": 39.8,
+    "run_duration_s": 39.6,
     "gpus": 2,
-    "run_gpu_hours": 0.0221,
-    "gpu_hours_per_1m_output_tokens": 0.337
+    "run_gpu_hours": 0.022,
+    "gpu_hours_per_1m_output_tokens": 0.335
    },
    "gpu_hours": {
     "download": 0.059,
     "build": 0.29,
-    "serve": 0.159,
+    "serve": 0.158,
     "total": 0.51,
     "notes": [
      "container build cost is the measured shared build (this run reused the image)"
     ]
    },
    "provenance": {},
-   "gph1m": 0.337,
+   "gph1m": 0.335,
    "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
-   "serve_command": null,
+   "repeat_pct": [
+    -0.1,
+    0.1,
+    0.6
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name gemma31b --tensor-parallel-size 2 --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice --port 8000",
    "worker_command": null,
-   "env": {},
-   "tok64": 1646.55,
-   "tok1": 80.2
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 1656.22,
+   "tok1": 80.12
   },
   {
    "order": 8,
@@ -766,7 +895,7 @@ window.SITE = {
    },
    "load": {
     "weights_gib_per_gpu": 48.54,
-    "load_seconds": 13,
+    "load_seconds": 12,
     "kv_cache_tokens": 1112876,
     "max_concurrency_at_262144_ctx": 4.25
    },
@@ -775,34 +904,34 @@ window.SITE = {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 207.99,
-     "mean_ttft_ms": 44.15,
-     "mean_tpot_ms": 4.65,
+     "output_tok_s": 206.72,
+     "mean_ttft_ms": 45.98,
+     "mean_tpot_ms": 4.67,
      "total_input_tokens": 4096,
      "total_output_tokens": 1024,
-     "duration_s": 4.9
+     "duration_s": 5.0
     },
     {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 1324.3,
-     "mean_ttft_ms": 349.47,
-     "mean_tpot_ms": 10.75,
+     "output_tok_s": 1273.49,
+     "mean_ttft_ms": 357.56,
+     "mean_tpot_ms": 11.2,
      "total_input_tokens": 65536,
      "total_output_tokens": 16384,
-     "duration_s": 12.4
+     "duration_s": 12.9
     },
     {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 2702.8,
-     "mean_ttft_ms": 539.05,
-     "mean_tpot_ms": 21.6,
+     "output_tok_s": 2599.91,
+     "mean_ttft_ms": 561.77,
+     "mean_tpot_ms": 22.45,
      "total_input_tokens": 262144,
      "total_output_tokens": 65536,
-     "duration_s": 24.2
+     "duration_s": 25.2
     }
    ],
    "cost_metric": {
@@ -810,28 +939,42 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "run_duration_s": 24.2,
+    "run_duration_s": 25.2,
     "gpus": 1,
-    "run_gpu_hours": 0.0067,
-    "gpu_hours_per_1m_output_tokens": 0.103
+    "run_gpu_hours": 0.007,
+    "gpu_hours_per_1m_output_tokens": 0.107
    },
    "gpu_hours": {
     "download": 0.059,
     "build": 0.29,
-    "serve": 0.065,
+    "serve": 0.064,
     "total": 0.41,
     "notes": [
      "container build cost is the measured shared build (this run reused the image)"
     ]
    },
    "provenance": {},
-   "gph1m": 0.103,
+   "gph1m": 0.107,
    "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
-   "serve_command": null,
+   "repeat_pct": [
+    -0.6,
+    -3.8,
+    -3.8
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name gemma26b --tensor-parallel-size 1 --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice --port 8000",
    "worker_command": null,
-   "env": {},
-   "tok64": 2702.8,
-   "tok1": 207.99
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 2599.91,
+   "tok1": 206.72
   },
   {
    "order": 9,
@@ -881,8 +1024,8 @@ window.SITE = {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 217.51,
-     "mean_ttft_ms": 100.24,
+     "output_tok_s": 220.06,
+     "mean_ttft_ms": 87.9,
      "mean_tpot_ms": 4.22,
      "total_input_tokens": 4096,
      "total_output_tokens": 1024,
@@ -892,9 +1035,9 @@ window.SITE = {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 1294.64,
-     "mean_ttft_ms": 446.89,
-     "mean_tpot_ms": 10.64,
+     "output_tok_s": 1285.27,
+     "mean_ttft_ms": 423.33,
+     "mean_tpot_ms": 10.83,
      "total_input_tokens": 65536,
      "total_output_tokens": 16384,
      "duration_s": 12.7
@@ -903,12 +1046,12 @@ window.SITE = {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 2687.0,
-     "mean_ttft_ms": 495.02,
-     "mean_tpot_ms": 21.91,
+     "output_tok_s": 2714.46,
+     "mean_ttft_ms": 494.15,
+     "mean_tpot_ms": 21.67,
      "total_input_tokens": 262144,
      "total_output_tokens": 65536,
-     "duration_s": 24.4
+     "duration_s": 24.1
     }
    ],
    "cost_metric": {
@@ -916,28 +1059,43 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "run_duration_s": 24.4,
+    "run_duration_s": 24.1,
     "gpus": 1,
-    "run_gpu_hours": 0.0068,
-    "gpu_hours_per_1m_output_tokens": 0.103
+    "run_gpu_hours": 0.0067,
+    "gpu_hours_per_1m_output_tokens": 0.102
    },
    "gpu_hours": {
     "download": 0.019,
     "build": 0.29,
-    "serve": 0.06,
+    "serve": 0.064,
     "total": 0.37,
     "notes": [
+     "download cost kept from the earlier real download (this run only verified the files)",
      "container build cost is the measured shared build (this run reused the image)"
     ]
    },
    "provenance": {},
-   "gph1m": 0.103,
+   "gph1m": 0.102,
    "vllm_args": "--enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --trust-remote-code",
-   "serve_command": null,
+   "repeat_pct": [
+    1.2,
+    -0.7,
+    1.0
+   ],
+   "serve_command": "vllm serve <model-dir> --served-model-name ornith35b --tensor-parallel-size 1 --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --trust-remote-code --port 8000",
    "worker_command": null,
-   "env": {},
-   "tok64": 2687.0,
-   "tok1": 217.51
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 2714.46,
+   "tok1": 220.06
   }
  ]
 };

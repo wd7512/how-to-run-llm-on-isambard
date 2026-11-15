@@ -69,7 +69,7 @@ data-parallel mode: node 0 runs `vllm serve ... --data-parallel-size <N> --data-
 - **Across nodes use data-parallel plus expert-parallel**, with tensor-parallel kept inside each node so the per-layer
   all-reduce never crosses the network. Pipeline-parallel across nodes failed in vLLM 0.33 for DeepSeek.
 - **Use the fewest GPUs that fit.** Billing is per GPU, so a model that fits on 1 GPU costs a quarter of a node. More GPUs
-  raise throughput but not in proportion (measured: Qwen3.8-27B on 4 GPUs gave 1.75x the throughput of 1 GPU at 64 users;
+  raise throughput but not in proportion (measured: Qwen3.8-27B on 4 GPUs gave about 1.7x the throughput of 1 GPU at 64 users;
   Flint on 4 GPUs gave 1.16x that of 2 GPUs).
 
 What fit where (measured):
@@ -77,15 +77,15 @@ What fit where (measured):
 <!-- BEGIN:fit-table -->
 | GPUs | Nodes | Model | Weights per GPU | Concurrent 262k contexts held | Layout |
 |---:|---:|---|---:|---:|---|
-| 1 | 1 | [Gemma 4 26B-A4B](#gemma26b) | 49 GiB | 4.2 | TP1 x DP1, 1 node(s) |
 | 1 | 1 | [Ornith-1.0-35B](#ornith35b) | 65 GiB | 3.4 | TP1 x DP1, 1 node(s) |
-| 1 | 1 | [Qwen3.8-27B](#qwen38) | 51 GiB | 2.0 | TP1 x DP1, 1 node(s) |
-| 2 | 1 | [Flint 40B-A2.5B](#flint) | 37 GiB | 11.2 | 2 GPUs, TP2 + expert-parallel, --attention-backend FLASHINFER |
+| 1 | 1 | [Gemma 4 26B-A4B](#gemma26b) | 49 GiB | 4.2 | TP1 x DP1, 1 node(s) |
+| 1 | 1 | [Qwen3.8-27B](#qwen38) | 51 GiB | 1.9 | TP1 x DP1, 1 node(s) |
+| 2 | 1 | [Flint 40B-A2.5B](#flint) | 37 GiB | 11.2 | TP2 x DP1 + expert-parallel, 1 node(s) |
 | 2 | 1 | [Gemma 4 31B](#gemma31b) | 30 GiB | 3.2 | TP2 x DP1, 1 node(s) |
-| 4 | 1 | [Qwen3.8-Flash-Next](#qwen38flash) | 61 GiB | 6.4 | tensor-parallel 4 + expert-parallel, 1 node, n-gram embedding offloaded to host RAM |
-| 4 | 1 | [MiMo-V2.6-Flash](#mimo26) | 42 GiB | 16.5 | tensor-parallel 4, 1 node |
+| 4 | 1 | [Qwen3.8-Flash-Next](#qwen38flash) | 61 GiB | 6.4 | TP4 x DP1 + expert-parallel, 1 node(s) |
+| 4 | 1 | [MiMo-V2.6-Flash](#mimo26) | 42 GiB | 16.5 | TP4 x DP1, 1 node(s) |
 | 8 | 2 | [DeepSeek-V4.1-Flash](#dsv41) | 39 GiB | 48.5 | TP4 x DP2 + expert-parallel, 2 node(s) |
-| 8 | 2 | [GLM-5.3-Flash](#glm53) | 42 GiB | 13.2 | tensor-parallel 4 x data-parallel 2 + expert-parallel, --enforce-eager (no CUDA graphs) |
+| 8 | 2 | [GLM-5.3-Flash](#glm53) | 42 GiB | 13.2 | TP4 x DP2 + expert-parallel, 2 node(s) |
 <!-- END:fit-table -->
 
 ## 4. What the vLLM flags mean
@@ -120,15 +120,15 @@ Environment variables set inside the container (all in `node_entry.sh`):
 <!-- BEGIN:models-table -->
 | `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours per 1M output tokens | GPU-hours to reproduce | Status |
 |---|---|---:|---:|---:|---:|---:|---|
-| `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 48 / 1,475 | 1.51 | ~1.40 | worked |
-| `glm53` | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 328 GB | 8 | 6.8 / 365 | 6.10 | ~2.33 | eager only |
-| `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,413 | 0.20 | ~0.40 | worked |
-| `flint` | [Flint 40B-A2.5B](https://huggingface.co/RecursiveSI/flint) | 79.6 GB | 2 | 196 / 3,986 | 0.14 | ~0.40 | worked |
-| `mimo26` | [MiMo-V2.6-Flash](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL) | 178 GB | 4 | 230 / 2,380 | 0.47 | ~0.91 | worked |
-| `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 156 / 2,660 | 0.42 | ~0.73 | worked |
-| `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,647 | 0.34 | ~0.51 | worked |
-| `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 208 / 2,703 | 0.10 | ~0.41 | worked |
-| `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 218 / 2,687 | 0.10 | ~0.37 | worked |
+| `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 47 / 1,446 | 1.54 | ~1.37 | worked |
+| `glm53` | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 328 GB | 8 | 7.3 / 449 | 4.95 | ~2.14 | eager only |
+| `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,421 | 0.20 | ~0.39 | worked |
+| `flint` | [Flint 40B-A2.5B](https://huggingface.co/RecursiveSI/flint) | 79.6 GB | 2 | 194 / 3,983 | 0.14 | ~0.40 | worked |
+| `mimo26` | [MiMo-V2.6-Flash](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL) | 178 GB | 4 | 231 / 2,370 | 0.47 | ~0.90 | worked |
+| `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 154 / 2,647 | 0.42 | ~0.78 | worked |
+| `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,656 | 0.34 | ~0.51 | worked |
+| `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 207 / 2,600 | 0.11 | ~0.41 | worked |
+| `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 220 / 2,714 | 0.10 | ~0.37 | worked |
 <!-- END:models-table -->
 
 **GPU-hours per 1M output tokens** is the comparable cost (section 8). Every model below has its own notes and the
@@ -146,7 +146,28 @@ MODEL=dsv41 bash scripts/run.sh               # 2 node(s) x 4 GPU(s), time cap 0
 MODEL=dsv41 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 47.8 output tok/s for one user, 1,475 at 64 users; **1.51 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~1.40 GPU-hours to reproduce. Layout: TP4 x DP2 + expert-parallel, 2 node(s).
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name dsv41 \
+  --tensor-parallel-size 4 \
+  --data-parallel-size 2 \
+  --data-parallel-size-local 1 \
+  --data-parallel-address <head-node> \
+  --data-parallel-rpc-port 13345 \
+  --enable-expert-parallel \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --trust-remote-code \
+  --tool-call-parser deepseek_v41 \
+  --enable-auto-tool-choice \
+  --reasoning-parser deepseek_v41 \
+  --port 8000
+```
+
+Measured: 47.1 output tok/s for one user, 1,446 at 64 users; **1.54 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~1.37 GPU-hours to reproduce. Layout: TP4 x DP2 + expert-parallel, 2 node(s).
 
 - Layout is tensor-parallel 4 per node x data-parallel 2 + expert parallel. Pipeline parallel across nodes fails in vLLM 0.33 for this model (`AssertionError` in `_run_layers`).
 - vLLM puts the ~196B-parameter Engram embedding tables in pinned host RAM by itself (about 24 GiB per rank).
@@ -162,7 +183,29 @@ MODEL=glm53 bash scripts/run.sh               # 2 node(s) x 4 GPU(s), time cap 0
 MODEL=glm53 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 6.8 output tok/s for one user, 365 at 64 users; **6.10 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~2.33 GPU-hours to reproduce. Layout: tensor-parallel 4 x data-parallel 2 + expert-parallel, --enforce-eager (no CUDA graphs).
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name glm53 \
+  --tensor-parallel-size 4 \
+  --data-parallel-size 2 \
+  --data-parallel-size-local 1 \
+  --data-parallel-address <head-node> \
+  --data-parallel-rpc-port 13345 \
+  --enable-expert-parallel \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --tool-call-parser glm47 \
+  --enable-auto-tool-choice \
+  --reasoning-parser glm47 \
+  --disable-flashinfer-autotune \
+  --enforce-eager \
+  --port 8000
+```
+
+Measured: 7.3 output tok/s for one user, 449 at 64 users; **4.95 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~2.14 GPU-hours to reproduce. Layout: TP4 x DP2 + expert-parallel, 2 node(s).
 
 - CUDA-graph capture hung at 12/19 for 22 minutes with no error (DP 2 x TP 4 + EP), so the preset uses `--enforce-eager`. Open item: find a graph mode that works, or try TP 8 across both nodes as the vLLM recipe does on one 8-GPU node.
 - First start JIT-compiles FlashInfer kernels and vLLM gives up after 600 s by default: `VLLM_ENGINE_READY_TIMEOUT_S=3600` is set in `node_entry.sh`.
@@ -177,7 +220,23 @@ MODEL=qwen38 bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 
 MODEL=qwen38 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 57.3 output tok/s for one user, 1,413 at 64 users; **0.20 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.40 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name qwen38 \
+  --tensor-parallel-size 1 \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_coder \
+  --reasoning-parser qwen3 \
+  --mm-encoder-tp-mode data \
+  --port 8000
+```
+
+Measured: 57.2 output tok/s for one user, 1,421 at 64 users; **0.20 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.39 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
 
 - One GPU is enough; for more throughput raise `GPUS` and `DP_PER_NODE` together in `scripts/models/qwen38.env`.
 - With one GPU the KV cache holds only about 1.9 full-length (262k) contexts.
@@ -191,7 +250,21 @@ MODEL=flint bash scripts/run.sh               # 1 node(s) x 2 GPU(s), time cap 0
 MODEL=flint python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 196.3 output tok/s for one user, 3,986 at 64 users; **0.14 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.40 GPU-hours to reproduce. Layout: 2 GPUs, TP2 + expert-parallel, --attention-backend FLASHINFER.
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name flint \
+  --tensor-parallel-size 2 \
+  --enable-expert-parallel \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --attention-backend FLASHINFER \
+  --port 8000
+```
+
+Measured: 193.8 output tok/s for one user, 3,983 at 64 users; **0.14 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.40 GPU-hours to reproduce. Layout: TP2 x DP1 + expert-parallel, 1 node(s).
 
 - `OsaurusAI/Flint-40B-A2.5B-JANGH2` will not load: it is an MLX checkpoint with a custom JANGH 2-bit quantisation. The preset serves the BF16 base instead.
 - vLLM picks the FLASH_ATTN backend by default but the Flint model code asserts FlashInfer: the preset sets `--attention-backend FLASHINFER`.
@@ -206,7 +279,24 @@ MODEL=mimo26 bash scripts/run.sh               # 1 node(s) x 4 GPU(s), time cap 
 MODEL=mimo26 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 230.2 output tok/s for one user, 2,380 at 64 users; **0.47 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.91 GPU-hours to reproduce. Layout: tensor-parallel 4, 1 node.
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name mimo26 \
+  --tensor-parallel-size 4 \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --trust-remote-code \
+  --generation-config vllm \
+  --tool-call-parser mimo \
+  --enable-auto-tool-choice \
+  --reasoning-parser mimo \
+  --port 8000
+```
+
+Measured: 230.6 output tok/s for one user, 2,370 at 64 users; **0.47 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.90 GPU-hours to reproduce. Layout: TP4 x DP1, 1 node(s).
 
 - Needs vLLM 0.31 or newer for the mxfp4 weights (the image has 0.33).
 - The vLLM recipe recommends the `-MOPD` checkpoint over this `-RL` one, because `-RL` can get stuck repeating tool calls. The preset runs the `-RL` checkpoint; that behaviour was not tested.
@@ -221,7 +311,25 @@ MODEL=qwen38flash bash scripts/run.sh               # 1 node(s) x 4 GPU(s), time
 MODEL=qwen38flash python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 156.0 output tok/s for one user, 2,660 at 64 users; **0.42 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.73 GPU-hours to reproduce. Layout: tensor-parallel 4 + expert-parallel, 1 node, n-gram embedding offloaded to host RAM.
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name qwen38flash \
+  --tensor-parallel-size 4 \
+  --enable-expert-parallel \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --max-num-seqs 256 \
+  --enable-prefix-caching \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_coder \
+  --reasoning-parser qwen3 \
+  --port 8000
+```
+
+Measured: 154.1 output tok/s for one user, 2,647 at 64 users; **0.42 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.78 GPU-hours to reproduce. Layout: TP4 x DP1 + expert-parallel, 1 node(s).
 
 - The n-gram embedding table is offloaded to host RAM by default, so the job needs the host memory of a full 4-GPU allocation.
 - The recipe says to keep `--max-num-seqs 256` (smaller values hit a Mamba-cache capacity error); it is in the preset's extra args and overrides the default of 64.
@@ -236,7 +344,22 @@ MODEL=gemma31b bash scripts/run.sh               # 1 node(s) x 2 GPU(s), time ca
 MODEL=gemma31b python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 80.2 output tok/s for one user, 1,647 at 64 users; **0.34 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.51 GPU-hours to reproduce. Layout: TP2 x DP1, 1 node(s).
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name gemma31b \
+  --tensor-parallel-size 2 \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --reasoning-parser gemma4 \
+  --tool-call-parser gemma4 \
+  --enable-auto-tool-choice \
+  --port 8000
+```
+
+Measured: 80.1 output tok/s for one user, 1,656 at 64 users; **0.34 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.51 GPU-hours to reproduce. Layout: TP2 x DP1, 1 node(s).
 
 - Ungated, so no Hugging Face token is needed.
 - `google/gemma-4-31B` is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is `google/gemma-4-31B-it`; the architecture and size are the same, so speed should match, but it was not run.
@@ -252,7 +375,22 @@ MODEL=gemma26b bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time ca
 MODEL=gemma26b python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 208.0 output tok/s for one user, 2,703 at 64 users; **0.10 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.41 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name gemma26b \
+  --tensor-parallel-size 1 \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --reasoning-parser gemma4 \
+  --tool-call-parser gemma4 \
+  --enable-auto-tool-choice \
+  --port 8000
+```
+
+Measured: 206.7 output tok/s for one user, 2,600 at 64 users; **0.11 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.41 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
 
 - Ungated, so no Hugging Face token is needed.
 - `google/gemma-4-26B-A4B` is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is `google/gemma-4-26B-A4B-it`; the architecture and size are the same, so speed should match, but it was not run.
@@ -267,7 +405,24 @@ MODEL=ornith35b bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time c
 MODEL=ornith35b python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 217.5 output tok/s for one user, 2,687 at 64 users; **0.10 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.37 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name ornith35b \
+  --tensor-parallel-size 1 \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --enable-prefix-caching \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_xml \
+  --reasoning-parser qwen3 \
+  --trust-remote-code \
+  --port 8000
+```
+
+Measured: 220.1 output tok/s for one user, 2,714 at 64 users; **0.10 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.37 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
 
 - Ungated, so no Hugging Face token is needed. Needs vLLM 0.19.1 or newer (the image has 0.33).
 - Uses the model card's flags: `qwen3` reasoning parser, `qwen3_xml` tool-call parser, prefix caching.
@@ -334,5 +489,5 @@ Tip: the useful error is rarely at the bottom of the log. Search `logs/vllm_serv
 ## 10. Known limitations
 
 - **Short benchmarks only.** Nothing here measures a 250k-token prompt (prefill time, long-context decode speed).
-- **A single run per model**, no repeats, so no error bars.
+- **Two runs per model.** Seven of nine models agreed within about 4% between runs (most within 1%); DeepSeek (+14% at 16 users) and GLM (up to +23% at 64 users) varied more, so treat the two-node numbers as roughly +/-20%. Each results file keeps the earlier run under `previous_run`. No repeats beyond that, so no proper error bars.
 - **Node-local caches mean kernels recompile every job** (about 1 minute of start-up).
