@@ -13,7 +13,8 @@ window.SITE = {
    "notes": [
     "Layout is tensor-parallel 4 per node x data-parallel 2 + expert parallel. Pipeline parallel across nodes fails in vLLM 0.33 for this model (<code>AssertionError</code> in <code>_run_layers</code>).",
     "vLLM puts the ~196B-parameter Engram embedding tables in pinned host RAM by itself (about 24 GiB per rank).",
-    "Ray is not in the vLLM image, so the run uses vLLM's built-in multi-node data-parallel mode."
+    "Ray is not in the vLLM image, so the run uses vLLM's built-in multi-node data-parallel mode.",
+    "The preset's <code>deepseek_v41</code> reasoning and tool-call parsers fix the stray <code>&lt;/think&gt;</code> that the first, parser-less run showed at the start of replies."
    ],
    "caveats": [],
    "key": "dsv41",
@@ -23,52 +24,60 @@ window.SITE = {
    "time_cap": "00:40:00",
    "revision": "08c8657f02291e11b6f6b63e0e16014f8e748518",
    "date": "2026-11-15",
-   "layout": "tensor-parallel 4 x data-parallel 2 + expert-parallel",
+   "layout": "TP4 x DP2 + expert-parallel, 2 node(s)",
    "software": {
     "vllm": "0.33.0",
     "torch": "2.14.0+cu130",
     "cuda": "13.0",
-    "driver": "580.178.04"
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
    },
    "workload": {
     "tool": "vllm bench serve",
     "dataset": "random",
     "input_tokens_per_request": 1024,
     "output_tokens_per_request": 256,
-    "requests_per_level": "4 x concurrency",
-    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
    },
    "load": {
-    "weights_gib_per_gpu": 39.0,
-    "load_seconds": 128,
-    "kv_cache_gib_per_gpu": 40.8,
-    "kv_cache_tokens_total": 12724074,
-    "max_concurrency_at_262144_ctx": 48.5
+    "weights_gib_per_gpu": 39.01,
+    "load_seconds": 125,
+    "kv_cache_tokens": 12724006,
+    "max_concurrency_at_262144_ctx": 48.54
    },
    "results": [
     {
      "concurrency": 1,
      "requests": 4,
      "failed": 0,
-     "output_tok_s": 47.01,
-     "mean_ttft_ms": 230.9,
-     "mean_tpot_ms": 20.45
+     "output_tok_s": 47.8,
+     "mean_ttft_ms": 234.86,
+     "mean_tpot_ms": 20.08,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 21.4
     },
     {
      "concurrency": 16,
      "requests": 64,
      "failed": 0,
-     "output_tok_s": 490.99,
-     "mean_ttft_ms": 690.89,
-     "mean_tpot_ms": 29.99
+     "output_tok_s": 491.62,
+     "mean_ttft_ms": 724.85,
+     "mean_tpot_ms": 29.82,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 33.3
     },
     {
      "concurrency": 64,
      "requests": 256,
      "failed": 0,
-     "output_tok_s": 1422.45,
-     "mean_ttft_ms": 1036.8,
-     "mean_tpot_ms": 41.03
+     "output_tok_s": 1475.14,
+     "mean_ttft_ms": 989.4,
+     "mean_tpot_ms": 39.61,
+     "total_input_tokens": 262144,
+     "total_output_tokens": 65536,
+     "duration_s": 44.4
     }
    ],
    "cost_metric": {
@@ -76,27 +85,26 @@ window.SITE = {
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "input_to_output_ratio": 4,
-    "run_duration_s": 46.1,
+    "run_duration_s": 44.4,
     "gpus": 8,
-    "run_gpu_hours": 0.1024,
-    "gpu_hours_per_1m_output_tokens": 1.562
+    "run_gpu_hours": 0.0987,
+    "gpu_hours_per_1m_output_tokens": 1.506
    },
    "gpu_hours": {
     "download": 0.16,
-    "build": 0.35,
-    "serve": 1.02,
-    "total": 1.53
+    "build": 0.29,
+    "serve": 0.953,
+    "total": 1.4,
+    "notes": [
+     "download cost kept from the earlier real download (this run only verified the files)",
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
    },
-   "provenance": {
-    "scripts_commit": "original absolute-path scripts (before e39d9d6)",
-    "token_counts": "nominal",
-    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
-   },
-   "gph1m": 1.562,
+   "provenance": {},
+   "gph1m": 1.506,
    "vllm_args": "--trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41",
-   "tok64": 1422.45,
-   "tok1": 47.01
+   "tok64": 1475.14,
+   "tok1": 47.8
   },
   {
    "order": 2,
@@ -591,6 +599,215 @@ window.SITE = {
    "vllm_args": "--max-num-seqs 256 --enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3",
    "tok64": 2660.23,
    "tok1": 156.01
+  },
+  {
+   "order": 7,
+   "label": "Gemma 4 31B",
+   "hf": "google/gemma-4-31B",
+   "weights_gb": 62.6,
+   "summary": "Dense 31B, bf16, 262k context",
+   "status": "worked",
+   "description": "<code>google/gemma-4-31B</code>: dense 31B, bf16, 62.6 GB, 262k context, Apache-2.0. The weights fit on one GPU, but a full 262k context needs 2.",
+   "notes": [
+    "Ungated, so no Hugging Face token is needed.",
+    "<code>google/gemma-4-31B</code> is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is <code>google/gemma-4-31B-it</code>; the architecture and size are the same, so speed should match, but it was not run.",
+    "On one GPU vLLM refuses to start at 262,144 context: the weights take 58 GiB, leaving 24.5 GiB, and the KV cache for one 262k sequence needs 33.3 GiB (max context on 1 GPU is about 147k). The preset uses 2 GPUs (tensor-parallel 2).",
+    "Uses vLLM's <code>gemma4</code> reasoning and tool-call parsers."
+   ],
+   "caveats": [
+    "Base (pre-trained) checkpoint with no chat template, not the instruction-tuned <code>-it</code> variant."
+   ],
+   "key": "gemma31b",
+   "nodes": 1,
+   "gpus_per_node": 2,
+   "gpus": 2,
+   "time_cap": "00:30:00",
+   "revision": "5bbc2fb1c1b2c611d06e3d9f23c170ba21659d89",
+   "date": "2026-11-15",
+   "layout": "TP2 x DP1, 1 node(s)",
+   "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
+   },
+   "workload": {
+    "tool": "vllm bench serve",
+    "dataset": "random",
+    "input_tokens_per_request": 1024,
+    "output_tokens_per_request": 256,
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
+   },
+   "load": {
+    "weights_gib_per_gpu": 30.38,
+    "load_seconds": 8,
+    "kv_cache_tokens": 834085,
+    "max_concurrency_at_262144_ctx": 3.18
+   },
+   "results": [
+    {
+     "concurrency": 1,
+     "requests": 4,
+     "failed": 0,
+     "output_tok_s": 80.2,
+     "mean_ttft_ms": 83.46,
+     "mean_tpot_ms": 12.19,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 12.8
+    },
+    {
+     "concurrency": 16,
+     "requests": 64,
+     "failed": 0,
+     "output_tok_s": 856.85,
+     "mean_ttft_ms": 745.06,
+     "mean_tpot_ms": 15.8,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 19.1
+    },
+    {
+     "concurrency": 64,
+     "requests": 256,
+     "failed": 0,
+     "output_tok_s": 1646.55,
+     "mean_ttft_ms": 1399.98,
+     "mean_tpot_ms": 33.46,
+     "total_input_tokens": 262144,
+     "total_output_tokens": 65536,
+     "duration_s": 39.8
+    }
+   ],
+   "cost_metric": {
+    "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
+    "run_requests": 256,
+    "run_input_tokens": 262144,
+    "run_output_tokens": 65536,
+    "run_duration_s": 39.8,
+    "gpus": 2,
+    "run_gpu_hours": 0.0221,
+    "gpu_hours_per_1m_output_tokens": 0.337
+   },
+   "gpu_hours": {
+    "download": 0.059,
+    "build": 0.29,
+    "serve": 0.159,
+    "total": 0.51,
+    "notes": [
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
+   },
+   "provenance": {},
+   "gph1m": 0.337,
+   "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
+   "tok64": 1646.55,
+   "tok1": 80.2
+  },
+  {
+   "order": 8,
+   "label": "Gemma 4 26B-A4B",
+   "hf": "google/gemma-4-26B-A4B",
+   "weights_gb": 51.6,
+   "summary": "MoE, 128 experts (8 active), ~4B active, bf16",
+   "status": "worked",
+   "description": "<code>google/gemma-4-26B-A4B</code>: MoE with 128 experts (8 active, about 4B active parameters), bf16, 51.6 GB, 262k context, Apache-2.0. Fits on a single GPU.",
+   "notes": [
+    "Ungated, so no Hugging Face token is needed.",
+    "<code>google/gemma-4-26B-A4B</code> is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is <code>google/gemma-4-26B-A4B-it</code>; the architecture and size are the same, so speed should match, but it was not run.",
+    "Uses vLLM's <code>gemma4</code> reasoning and tool-call parsers."
+   ],
+   "caveats": [
+    "Base (pre-trained) checkpoint with no chat template, not the instruction-tuned <code>-it</code> variant."
+   ],
+   "key": "gemma26b",
+   "nodes": 1,
+   "gpus_per_node": 1,
+   "gpus": 1,
+   "time_cap": "00:30:00",
+   "revision": "24548b62aa021d562695c04aaf7758a1ea47990b",
+   "date": "2026-11-15",
+   "layout": "TP1 x DP1, 1 node(s)",
+   "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
+   },
+   "workload": {
+    "tool": "vllm bench serve",
+    "dataset": "random",
+    "input_tokens_per_request": 1024,
+    "output_tokens_per_request": 256,
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
+   },
+   "load": {
+    "weights_gib_per_gpu": 48.54,
+    "load_seconds": 13,
+    "kv_cache_tokens": 1112876,
+    "max_concurrency_at_262144_ctx": 4.25
+   },
+   "results": [
+    {
+     "concurrency": 1,
+     "requests": 4,
+     "failed": 0,
+     "output_tok_s": 207.99,
+     "mean_ttft_ms": 44.15,
+     "mean_tpot_ms": 4.65,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 4.9
+    },
+    {
+     "concurrency": 16,
+     "requests": 64,
+     "failed": 0,
+     "output_tok_s": 1324.3,
+     "mean_ttft_ms": 349.47,
+     "mean_tpot_ms": 10.75,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 12.4
+    },
+    {
+     "concurrency": 64,
+     "requests": 256,
+     "failed": 0,
+     "output_tok_s": 2702.8,
+     "mean_ttft_ms": 539.05,
+     "mean_tpot_ms": 21.6,
+     "total_input_tokens": 262144,
+     "total_output_tokens": 65536,
+     "duration_s": 24.2
+    }
+   ],
+   "cost_metric": {
+    "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
+    "run_requests": 256,
+    "run_input_tokens": 262144,
+    "run_output_tokens": 65536,
+    "run_duration_s": 24.2,
+    "gpus": 1,
+    "run_gpu_hours": 0.0067,
+    "gpu_hours_per_1m_output_tokens": 0.103
+   },
+   "gpu_hours": {
+    "download": 0.059,
+    "build": 0.29,
+    "serve": 0.065,
+    "total": 0.41,
+    "notes": [
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
+   },
+   "provenance": {},
+   "gph1m": 0.103,
+   "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
+   "tok64": 2702.8,
+   "tok1": 207.99
   }
  ]
 };

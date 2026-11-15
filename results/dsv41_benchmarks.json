@@ -1,79 +1,94 @@
 {
   "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+  "preset": "dsv41",
+  "revision": "08c8657f02291e11b6f6b63e0e16014f8e748518",
   "date": "2026-11-15",
-  "system": "Isambard-AI Phase 2, 2 nodes x 4 GH200 (96 GiB HBM each) = 8 GPUs",
+  "system": "Isambard-AI Phase 2, 8 x GH200 (96 GiB HBM each), 2 nodes",
   "software": {
     "vllm": "0.33.0",
     "torch": "2.14.0+cu130",
     "cuda": "13.0",
-    "driver": "580.178.04"
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
   },
-  "layout": "tensor-parallel 4 x data-parallel 2 + expert-parallel",
+  "layout": "TP4 x DP2 + expert-parallel, 2 node(s)",
+  "vllm_args": "--trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41",
+  "gpus": 8,
+  "job_ids": {
+    "download": "8487228",
+    "build": "none",
+    "serve": "8487233"
+  },
   "workload": {
     "tool": "vllm bench serve",
     "dataset": "random",
     "input_tokens_per_request": 1024,
     "output_tokens_per_request": 256,
-    "requests_per_level": "4 x concurrency",
-    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
   },
   "load": {
-    "weights_gib_per_gpu": 39.0,
-    "load_seconds": 128,
-    "kv_cache_gib_per_gpu": 40.8,
-    "kv_cache_tokens_total": 12724074,
-    "max_concurrency_at_262144_ctx": 48.5
+    "weights_gib_per_gpu": 39.01,
+    "load_seconds": 125,
+    "kv_cache_tokens": 12724006,
+    "max_concurrency_at_262144_ctx": 48.54
   },
   "results": [
     {
       "concurrency": 1,
       "requests": 4,
       "failed": 0,
-      "output_tok_s": 47.01,
-      "mean_ttft_ms": 230.9,
-      "mean_tpot_ms": 20.45
+      "output_tok_s": 47.8,
+      "mean_ttft_ms": 234.86,
+      "mean_tpot_ms": 20.08,
+      "total_input_tokens": 4096,
+      "total_output_tokens": 1024,
+      "duration_s": 21.4
     },
     {
       "concurrency": 16,
       "requests": 64,
       "failed": 0,
-      "output_tok_s": 490.99,
-      "mean_ttft_ms": 690.89,
-      "mean_tpot_ms": 29.99
+      "output_tok_s": 491.62,
+      "mean_ttft_ms": 724.85,
+      "mean_tpot_ms": 29.82,
+      "total_input_tokens": 65536,
+      "total_output_tokens": 16384,
+      "duration_s": 33.3
     },
     {
       "concurrency": 64,
       "requests": 256,
       "failed": 0,
-      "output_tok_s": 1422.45,
-      "mean_ttft_ms": 1036.8,
-      "mean_tpot_ms": 41.03
+      "output_tok_s": 1475.14,
+      "mean_ttft_ms": 989.4,
+      "mean_tpot_ms": 39.61,
+      "total_input_tokens": 262144,
+      "total_output_tokens": 65536,
+      "duration_s": 44.4
     }
   ],
-  "preset": "dsv41",
-  "mode": "CUDA graphs on",
+  "smoke_reply": {
+    "content": "Hello! I'm happy to help\u2014what can I do for you today?",
+    "has_reasoning_field": false
+  },
   "cost_metric": {
     "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "input_to_output_ratio": 4,
-    "run_duration_s": 46.1,
+    "run_duration_s": 44.4,
     "gpus": 8,
-    "run_gpu_hours": 0.1024,
-    "gpu_hours_per_1m_output_tokens": 1.562
+    "run_gpu_hours": 0.0987,
+    "gpu_hours_per_1m_output_tokens": 1.506
   },
-  "revision": "08c8657f02291e11b6f6b63e0e16014f8e748518",
-  "gpus": 8,
   "gpu_hours": {
     "download": 0.16,
-    "build": 0.35,
-    "serve": 1.02,
-    "total": 1.53
-  },
-  "provenance": {
-    "scripts_commit": "original absolute-path scripts (before e39d9d6)",
-    "token_counts": "nominal",
-    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
+    "build": 0.29,
+    "serve": 0.953,
+    "total": 1.4,
+    "notes": [
+      "download cost kept from the earlier real download (this run only verified the files)",
+      "container build cost is the measured shared build (this run reused the image)"
+    ]
   }
 }

@@ -1,0 +1,92 @@
+{
+  "model": "google/gemma-4-26B-A4B",
+  "preset": "gemma26b",
+  "revision": "24548b62aa021d562695c04aaf7758a1ea47990b",
+  "date": "2026-11-15",
+  "system": "Isambard-AI Phase 2, 1 x GH200 (96 GiB HBM each), 1 node",
+  "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
+  },
+  "layout": "TP1 x DP1, 1 node(s)",
+  "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
+  "gpus": 1,
+  "job_ids": {
+    "download": "8487200",
+    "build": "none",
+    "serve": "8487204"
+  },
+  "workload": {
+    "tool": "vllm bench serve",
+    "dataset": "random",
+    "input_tokens_per_request": 1024,
+    "output_tokens_per_request": 256,
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
+  },
+  "load": {
+    "weights_gib_per_gpu": 48.54,
+    "load_seconds": 13,
+    "kv_cache_tokens": 1112876,
+    "max_concurrency_at_262144_ctx": 4.25
+  },
+  "results": [
+    {
+      "concurrency": 1,
+      "requests": 4,
+      "failed": 0,
+      "output_tok_s": 207.99,
+      "mean_ttft_ms": 44.15,
+      "mean_tpot_ms": 4.65,
+      "total_input_tokens": 4096,
+      "total_output_tokens": 1024,
+      "duration_s": 4.9
+    },
+    {
+      "concurrency": 16,
+      "requests": 64,
+      "failed": 0,
+      "output_tok_s": 1324.3,
+      "mean_ttft_ms": 349.47,
+      "mean_tpot_ms": 10.75,
+      "total_input_tokens": 65536,
+      "total_output_tokens": 16384,
+      "duration_s": 12.4
+    },
+    {
+      "concurrency": 64,
+      "requests": 256,
+      "failed": 0,
+      "output_tok_s": 2702.8,
+      "mean_ttft_ms": 539.05,
+      "mean_tpot_ms": 21.6,
+      "total_input_tokens": 262144,
+      "total_output_tokens": 65536,
+      "duration_s": 24.2
+    }
+  ],
+  "smoke_reply": {
+    "error": "As of transformers v4.44, default chat template is no longer allowed, so you must provide a chat template if the tokenizer does not define one."
+  },
+  "cost_metric": {
+    "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
+    "run_requests": 256,
+    "run_input_tokens": 262144,
+    "run_output_tokens": 65536,
+    "run_duration_s": 24.2,
+    "gpus": 1,
+    "run_gpu_hours": 0.0067,
+    "gpu_hours_per_1m_output_tokens": 0.103
+  },
+  "gpu_hours": {
+    "download": 0.059,
+    "build": 0.29,
+    "serve": 0.065,
+    "total": 0.41,
+    "notes": [
+      "container build cost is the measured shared build (this run reused the image)"
+    ]
+  }
+}

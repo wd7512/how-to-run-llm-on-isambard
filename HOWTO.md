@@ -40,12 +40,14 @@ cap. When the head node finishes, it writes `logs/run_<jobid>/DONE` and the othe
 <!-- BEGIN:models-table -->
 | `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours per 1M output tokens | GPU-hours to reproduce | Status |
 |---|---|---:|---:|---:|---:|---:|---|
-| `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 47 / 1,422 | 1.56 | ~1.53 | worked |
+| `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 48 / 1,475 | 1.51 | ~1.40 | worked |
 | `glm53` | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 328 GB | 8 | 6.8 / 365 | 6.10 | ~2.33 | eager only |
 | `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,413 | 0.20 | ~0.40 | worked |
 | `flint` | [Flint 40B-A2.5B](https://huggingface.co/RecursiveSI/flint) | 79.6 GB | 2 | 196 / 3,986 | 0.14 | ~0.40 | worked |
 | `mimo26` | [MiMo-V2.6-Flash](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL) | 178 GB | 4 | 230 / 2,380 | 0.47 | ~0.91 | worked |
 | `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 156 / 2,660 | 0.42 | ~0.73 | worked |
+| `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,647 | 0.34 | ~0.51 | worked |
+| `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 208 / 2,703 | 0.10 | ~0.41 | worked |
 <!-- END:models-table -->
 
 ## Per-model notes and exact commands
@@ -60,11 +62,12 @@ MODEL=dsv41 bash scripts/run.sh               # 2 node(s) x 4 GPU(s), time cap 0
 MODEL=dsv41 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 47.0 output tok/s for one user, 1,422 at 64 users; **1.56 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~1.53 GPU-hours to reproduce. Layout: tensor-parallel 4 x data-parallel 2 + expert-parallel.
+Measured: 47.8 output tok/s for one user, 1,475 at 64 users; **1.51 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~1.40 GPU-hours to reproduce. Layout: TP4 x DP2 + expert-parallel, 2 node(s).
 
 - Layout is tensor-parallel 4 per node x data-parallel 2 + expert parallel. Pipeline parallel across nodes fails in vLLM 0.33 for this model (`AssertionError` in `_run_layers`).
 - vLLM puts the ~196B-parameter Engram embedding tables in pinned host RAM by itself (about 24 GiB per rank).
 - Ray is not in the vLLM image, so the run uses vLLM's built-in multi-node data-parallel mode.
+- The preset's `deepseek_v41` reasoning and tool-call parsers fix the stray `&lt;/think&gt;` that the first, parser-less run showed at the start of replies.
 
 ### glm53
 
@@ -139,6 +142,37 @@ Measured: 156.0 output tok/s for one user, 2,660 at 64 users; **0.42 GPU-hours p
 - The n-gram embedding table is offloaded to host RAM by default, so the job needs the host memory of a full 4-GPU allocation.
 - The recipe says to keep `--max-num-seqs 256` (smaller values hit a Mamba-cache capacity error); it is in the preset's extra args and overrides the default of 64.
 - Plain bf16: no speculative decoding (MTP) and no FP8 KV cache. The vendor recipe's faster settings target B200 GPUs and were not tried on GH200.
+
+### gemma31b
+
+**Gemma 4 31B** ([google/gemma-4-31B](https://huggingface.co/google/gemma-4-31B), revision `5bbc2fb1c1b2`). `google/gemma-4-31B`: dense 31B, bf16, 62.6 GB, 262k context, Apache-2.0. The weights fit on one GPU, but a full 262k context needs 2.
+
+```bash
+MODEL=gemma31b bash scripts/run.sh               # 1 node(s) x 2 GPU(s), time cap 00:30:00
+MODEL=gemma31b python3 scripts/collect_results.py   # when the serve job has finished
+```
+
+Measured: 80.2 output tok/s for one user, 1,647 at 64 users; **0.34 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.51 GPU-hours to reproduce. Layout: TP2 x DP1, 1 node(s).
+
+- Ungated, so no Hugging Face token is needed.
+- `google/gemma-4-31B` is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is `google/gemma-4-31B-it`; the architecture and size are the same, so speed should match, but it was not run.
+- On one GPU vLLM refuses to start at 262,144 context: the weights take 58 GiB, leaving 24.5 GiB, and the KV cache for one 262k sequence needs 33.3 GiB (max context on 1 GPU is about 147k). The preset uses 2 GPUs (tensor-parallel 2).
+- Uses vLLM's `gemma4` reasoning and tool-call parsers.
+
+### gemma26b
+
+**Gemma 4 26B-A4B** ([google/gemma-4-26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B), revision `24548b62aa02`). `google/gemma-4-26B-A4B`: MoE with 128 experts (8 active, about 4B active parameters), bf16, 51.6 GB, 262k context, Apache-2.0. Fits on a single GPU.
+
+```bash
+MODEL=gemma26b bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 00:30:00
+MODEL=gemma26b python3 scripts/collect_results.py   # when the serve job has finished
+```
+
+Measured: 208.0 output tok/s for one user, 2,703 at 64 users; **0.10 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.41 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
+
+- Ungated, so no Hugging Face token is needed.
+- `google/gemma-4-26B-A4B` is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is `google/gemma-4-26B-A4B-it`; the architecture and size are the same, so speed should match, but it was not run.
+- Uses vLLM's `gemma4` reasoning and tool-call parsers.
 
 <!-- END:model-sections -->
 

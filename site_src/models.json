@@ -10,7 +10,8 @@
   "notes": [
    "Layout is tensor-parallel 4 per node x data-parallel 2 + expert parallel. Pipeline parallel across nodes fails in vLLM 0.33 for this model (<code>AssertionError</code> in <code>_run_layers</code>).",
    "vLLM puts the ~196B-parameter Engram embedding tables in pinned host RAM by itself (about 24 GiB per rank).",
-   "Ray is not in the vLLM image, so the run uses vLLM's built-in multi-node data-parallel mode."
+   "Ray is not in the vLLM image, so the run uses vLLM's built-in multi-node data-parallel mode.",
+   "The preset's <code>deepseek_v41</code> reasoning and tool-call parsers fix the stray <code>&lt;/think&gt;</code> that the first, parser-less run showed at the start of replies."
   ],
   "caveats": []
  },
