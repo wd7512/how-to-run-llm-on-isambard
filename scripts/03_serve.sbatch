@@ -6,7 +6,7 @@
 # Submit with the wrapper (it sets --nodes from the model file):  bash scripts/03_serve.sh
 #SBATCH --job-name=serve
 #SBATCH --output=logs/%x_%j.out
-#SBATCH --nodes=2          # overridden by 03_serve.sh from NODES in the model file
+#SBATCH --nodes=2          # nodes, GPUs and CPUs below are overridden by 03_serve.sh
 #SBATCH --gpus-per-node=4
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=72
