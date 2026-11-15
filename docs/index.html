@@ -78,21 +78,18 @@ details summary { cursor: pointer; color: var(--link); font-size: 14px; margin-t
 }
 .caveats li { color: var(--text-secondary); margin-bottom: 6px; }
 footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
+.switch { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; }
+.switch button { font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--grid); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; }
+.switch button[aria-selected="true"] { background: var(--series-1); border-color: var(--series-1); color: #fff; }
 </style>
 </head>
 <body>
 <main>
-  <h1>DeepSeek V4.1 Flash on Isambard</h1>
-  <p class="sub">Measured inference speed and what it costs to serve
-    <code>DeepSeek-V4.1-Flash-1017</code> (552B-parameter mixture-of-experts, 1M-token context)
-    on <strong>2 Isambard-AI nodes, 8 &times; GH200</strong>, with vLLM 0.33.0.
-    Run on 15 November 2026. <a href="https://github.com/wd7512/how-to-run-llm-on-isambard/blob/main/HOWTO.md">How we got it running &rarr;</a></p>
+  <h1>Large LLMs on Isambard-AI</h1>
+  <p class="sub" id="sub"></p>
+  <div class="switch" role="tablist" aria-label="Model" id="switch"></div>
 
-  <section class="tiles" aria-label="Headline numbers">
-    <div class="tile"><div class="label">Single user, output speed</div><div class="value">47 tok/s</div><p class="note">time to first token 231 ms</p></div>
-    <div class="tile"><div class="label">Aggregate at 64 concurrent users</div><div class="value">1,422 tok/s</div><p class="note">each user still sees ~24 tok/s</p></div>
-    <div class="tile"><div class="label">Concurrent 262k-token contexts held</div><div class="value">48.5&times;</div><p class="note">12.7M tokens of KV cache across 8 GPUs</p></div>
-  </section>
+  <section class="tiles" id="tiles" aria-label="Headline numbers"></section>
 
   <section class="card">
     <h2>Aggregate output throughput</h2>
@@ -113,20 +110,15 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
   </section>
 
   <section class="card">
-    <h2>What it costs you: about 1.5 GPU-hours to get running</h2>
-    <p class="desc">GPU-hours for the three jobs in the guide, from Slurm accounting (1 node = 4 GPUs, so 1.5 GPU-hours = 0.4 node-hours). The download and container build are one-off. After that, serving on 2 nodes costs 8 GPU-hours per hour the job runs.</p>
+    <h2 id="cost-h"></h2>
+    <p class="desc" id="cost-d"></p>
     <div id="c-cost"></div>
     <details><summary>Table view</summary><div class="tablewrap"><table id="t-cost"></table></div></details>
   </section>
 
   <section class="card">
     <h2>Caveats</h2>
-    <ul class="caveats">
-      <li>Short prompts only. Nothing here measures a 250k-token prompt (prefill time or long-context decode speed).</li>
-      <li>One working run, no repeats, so no error bars.</li>
-      <li>The published scripts were parameterised after this run (no hard-coded paths or project names) and have not been re-run end-to-end.</li>
-      <li>Replies in the smoke test began with a stray <code>&lt;/think&gt;</code> token; the cause was not investigated.</li>
-    </ul>
+    <ul class="caveats" id="caveats"></ul>
   </section>
 
   <footer>
@@ -137,16 +129,43 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
 <div class="tip" id="tip" role="tooltip"></div>
 
 <script>
-const bench = [
-  {c: 1,  req: 4,   tps: 47.01,   ttft: 230.90,  tpot: 20.45},
-  {c: 16, req: 64,  tps: 490.99,  ttft: 690.89,  tpot: 29.99},
-  {c: 64, req: 256, tps: 1422.45, ttft: 1036.80, tpot: 41.03}
-];
-const cost = [
-  {s: "1. Download weights (one-off)",          h: 0.16, ok: true},
-  {s: "2. Build container (one-off)",           h: 0.35, ok: true},
-  {s: "3. Serve + benchmark, 2 nodes",          h: 1.02, ok: true}
-];
+const MODELS = {
+  dsv41: {
+    label: "DeepSeek-V4.1-Flash",
+    sub: `<code>DeepSeek-V4.1-Flash-1017</code>: 552B-parameter mixture-of-experts, 1M-token context, FP8 + FP4, 510 GB.`,
+    bench: [
+      {c: 1,  req: 4,   tps: 47.01,   ttft: 230.90,  tpot: 20.45},
+      {c: 16, req: 64,  tps: 490.99,  ttft: 690.89,  tpot: 29.99},
+      {c: 64, req: 256, tps: 1422.45, ttft: 1036.80, tpot: 41.03}],
+    tiles: [["Single user, output speed", "47 tok/s", "time to first token 231 ms"],
+            ["Aggregate at 64 concurrent users", "1,422 tok/s", "each user still sees ~24 tok/s"],
+            ["Concurrent 262k-token contexts held", "48.5\u00d7", "12.7M-token KV cache, as reported by vLLM"]],
+    cost: [{s: "1. Download weights (one-off)", h: 0.16}, {s: "2. Build container (shared)", h: 0.35}, {s: "3. Serve + benchmark, 2 nodes", h: 1.02}],
+    caveats: ["Short prompts only. Nothing here measures a 250k-token prompt (prefill time or long-context decode speed).",
+              "One working run, no repeats, so no error bars.",
+              "These numbers come from the original absolute-path scripts. The current model-switch version of the scripts has not been re-run for this model.",
+              "Replies in the smoke test began with a stray <code>&lt;/think&gt;</code> token; the cause was not investigated (the GLM preset's reasoning parser removes the equivalent on that model)."]
+  },
+  glm53: {
+    label: "GLM-5.3-Flash",
+    sub: `<code>zai-org/GLM-5.3-Flash</code>: MoE with 288 routed experts, 1M-token context, FP8, 328 GB. Run with <code>--enforce-eager</code> (CUDA graphs hang on this layout), so these numbers are a floor, not the best this hardware can do.`,
+    bench: [
+      {c: 1,  req: 4,   tps: 6.85,   ttft: 3748.91, tpot: 131.86},
+      {c: 16, req: 64,  tps: 91.62,  ttft: 4051.81, tpot: 159.30},
+      {c: 64, req: 256, tps: 364.55, ttft: 3599.70, tpot: 159.93}],
+    tiles: [["Single user, output speed", "6.9 tok/s", "time to first token 3.7 s (eager mode)"],
+            ["Aggregate at 64 concurrent users", "365 tok/s", "each user sees ~6 tok/s"],
+            ["Concurrent 262k-token contexts held", "13.2\u00d7", "3.46M-token KV cache per replica, as reported by vLLM"]],
+    cost: [{s: "1. Download weights (one-off)", h: 0.09}, {s: "2. Build container (shared)", h: 0.29}, {s: "3. Serve + benchmark, 2 nodes", h: 1.95}],
+    caveats: ["Eager mode only: the CUDA-graph run hung at capture 12/19 for 22 minutes, so decode is several times slower than it could be. Fixing that is the main open item.",
+              "Short prompts only. Nothing here measures a 250k-token prompt.",
+              "One working run, no repeats, so no error bars.",
+              "The serve job took about 15 minutes (14.6): about 4 minutes to start, then about 9 minutes of benchmarks, which are slow in eager mode."]
+  }
+};
+let current = new URLSearchParams(location.search).get("model");
+if (!MODELS[current]) current = "dsv41";
+let bench, cost;
 const NS = "http://www.w3.org/2000/svg";
 const tip = document.getElementById("tip");
 function el(name, attrs, parent) {
@@ -192,10 +211,22 @@ function columns(target, data, valueKey, unit, tipFn, decimals) {
   target.appendChild(svg);
 }
 
+function render() {
+  const M = MODELS[current]; bench = M.bench; cost = M.cost;
+  document.title = M.label + " on Isambard-AI";
+  document.getElementById("sub").innerHTML = M.sub + ` On <strong>2 Isambard-AI nodes, 8 &times; GH200</strong>, vLLM 0.33.0, 15 November 2026. <a href="https://github.com/wd7512/how-to-run-llm-on-isambard/blob/main/HOWTO.md">Exact steps &rarr;</a>`;
+  document.getElementById("tiles").innerHTML = M.tiles.map(t => `<div class="tile"><div class="label">${t[0]}</div><div class="value">${t[1]}</div><p class="note">${t[2]}</p></div>`).join("");
+  const tot = cost.reduce((a, d) => a + d.h, 0);
+  document.getElementById("cost-h").textContent = `What it costs you: about ${fmt(tot, 1)} GPU-hours to get running`;
+  document.getElementById("cost-d").textContent = `GPU-hours for the three jobs in the guide, from Slurm accounting (1 node = 4 GPUs, so ${fmt(tot, 1)} GPU-hours = ${fmt(tot / 4, 1)} node-hours). The download is one-off per model and the container is shared. Serving on 2 nodes costs 8 GPU-hours per hour the job runs.`;
+  document.getElementById("caveats").innerHTML = M.caveats.map(c => `<li>${c}</li>`).join("");
+  ["c-throughput", "c-peruser", "c-cost"].forEach(id => document.getElementById(id).innerHTML = "");
+  document.getElementById("switch").innerHTML = Object.keys(MODELS).map(k => `<button role="tab" data-k="${k}" aria-selected="${k === current}">${MODELS[k].label}</button>`).join("");
+  document.querySelectorAll("#switch button").forEach(b => b.onclick = () => { current = b.dataset.k; history.replaceState(null, "", "?model=" + current); render(); });
 columns(document.getElementById("c-throughput"), bench, "tps", "", d =>
-  `${d.c} concurrent: ${fmt(d.tps, 1)} tok/s aggregate`, 0);
+  `${d.c} concurrent: ${fmt(d.tps, 1)} tok/s aggregate`, bench[0].tps < 20 ? 1 : 0);
 columns(document.getElementById("c-peruser"), bench.map(d => ({...d, pu: 1000 / d.tpot})), "pu", "", d =>
-  `${d.c} concurrent: ${fmt(d.pu, 1)} tok/s per user`, 0);
+  `${d.c} concurrent: ${fmt(d.pu, 1)} tok/s per user`, bench[0].tps < 20 ? 1 : 0);
 
 document.getElementById("t-bench").innerHTML =
   "<thead><tr><th>Concurrent users</th><th>Requests</th><th>Aggregate tok/s</th><th>Per-user tok/s</th><th>TTFT (ms)</th><th>TPOT (ms)</th></tr></thead><tbody>" +
@@ -203,18 +234,18 @@ document.getElementById("t-bench").innerHTML =
   "</tbody>";
 
 // Horizontal bars: cost per job; value at the tip.
-(function () {
+function costChart() {
   const W = 640, rowH = 30, L = 232, R = 76, T = 6, H = T + rowH * cost.length + 8;
-  const max = 1.2, svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "GPU-hours per job"});
+  const max = Math.ceil(Math.max(...cost.map(d => d.h)) * 1.15 * 2) / 2, svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "GPU-hours per job"});
   const x = v => L + (W - L - R) * v / max;
-  [0, 0.5, 1].forEach(v => {
+  [0, 1, 2].filter(v => v <= max).forEach(v => {
     el("line", {class: "grid", x1: x(v), x2: x(v), y1: T, y2: H - 8}, svg);
   });
   cost.forEach((d, i) => {
     const yc = T + rowH * i + rowH / 2, bh = 16, w = Math.max(2, x(d.h) - x(0)), r = Math.min(4, w);
     const lab = el("text", {x: L - 10, y: yc + 4, "text-anchor": "end"}, svg); lab.textContent = d.s;
     const path = `M${x(0)},${yc - bh/2} H${x(0) + w - r} Q${x(0) + w},${yc - bh/2} ${x(0) + w},${yc - bh/2 + r} V${yc + bh/2 - r} Q${x(0) + w},${yc + bh/2} ${x(0) + w - r},${yc + bh/2} H${x(0)} Z`;
-    const m = el("path", {class: "mark" + (d.ok ? "" : " neutral"), d: path}, svg);
+    const m = el("path", {class: "mark", d: path}, svg);
     hover(m, `${d.s}: ${fmt(d.h, 2)} GPU-hours`);
     const v = el("text", {class: "val", x: x(0) + w + 8, y: yc + 4}, svg);
     v.textContent = fmt(d.h, 2) + "";
@@ -224,7 +255,10 @@ document.getElementById("t-bench").innerHTML =
     "<thead><tr><th>Job</th><th>GPU-hours</th></tr></thead><tbody>" +
     cost.map(d => `<tr><td>${d.s}</td><td>${fmt(d.h, 2)}</td></tr>`).join("") +
     `<tr><td><strong>Total</strong></td><td><strong>${fmt(cost.reduce((a, d) => a + d.h, 0), 2)}</strong></td></tr></tbody>`;
-})();
+}
+  costChart();
+}
+render();
 </script>
 </body>
 </html>

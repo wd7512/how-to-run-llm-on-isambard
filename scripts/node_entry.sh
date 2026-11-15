@@ -62,9 +62,9 @@ if [ "$SLURM_NODEID" = "0" ]; then
 
   # To keep the endpoint up instead, delete the next two lines and `wait $SP`.
   pkill -f "vllm serve"
-  # The worker node waits forever once the head node is done. In the original run this was
-  # cancelled by hand (`scancel <jobid>`); this line tries to do it automatically but is
-  # UNTESTED (scancel may not exist inside the container).
+  # In the dsv41 run the worker waited forever and the job was cancelled by hand; in the glm53 run
+  # the job ended by itself. scancel is NOT available inside the container, so this line only
+  # prints the command to run.
   scancel "$SLURM_JOB_ID" 2>/dev/null || echo "scancel unavailable here - run: scancel $SLURM_JOB_ID"
 else
   vllm serve $COMMON --headless --data-parallel-start-rank 1 \

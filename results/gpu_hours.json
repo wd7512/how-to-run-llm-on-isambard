@@ -1,10 +1,39 @@
 {
-  "note": "GPU-hours of the three jobs needed to reproduce, from Slurm accounting (sacct). 1 Isambard-AI node = 4 GPUs. Serving on 2 nodes costs 8 GPU-hours per hour the job runs.",
-  "steps": [
-    {"step": "1. Download weights (1 GPU, one-off)",     "gpu_hours": 0.16},
-    {"step": "2. Build container + check (1 GPU, one-off)", "gpu_hours": 0.35},
-    {"step": "3. Serve + benchmark (2 nodes, 8 GPUs)",   "gpu_hours": 1.02}
-  ],
-  "total_gpu_hours": 1.53,
-  "total_node_hours": 0.38
+  "note": "GPU-hours of the jobs needed to reproduce, from Slurm accounting (sacct). 1 Isambard-AI node = 4 GPUs. Serving on 2 nodes costs 8 GPU-hours per hour the job runs. The container build is shared between models.",
+  "models": {
+    "dsv41": {
+      "steps": [
+        {
+          "step": "Download weights (1 GPU)",
+          "gpu_hours": 0.16
+        },
+        {
+          "step": "Build container (1 GPU, shared)",
+          "gpu_hours": 0.35
+        },
+        {
+          "step": "Serve + benchmark (2 nodes)",
+          "gpu_hours": 1.02
+        }
+      ],
+      "total_gpu_hours": 1.53
+    },
+    "glm53": {
+      "steps": [
+        {
+          "step": "Download weights (1 GPU)",
+          "gpu_hours": 0.09
+        },
+        {
+          "step": "Build container (1 GPU, shared)",
+          "gpu_hours": 0.29
+        },
+        {
+          "step": "Serve + benchmark (2 nodes)",
+          "gpu_hours": 1.95
+        }
+      ],
+      "total_gpu_hours": 2.33
+    }
+  }
 }
