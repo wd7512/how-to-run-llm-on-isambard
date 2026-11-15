@@ -24,11 +24,11 @@ mkdir -p "$DG_JIT_CACHE_DIR" "$TRITON_CACHE_DIR" "$VLLM_CACHE_ROOT" \
 
 # --- Fix 3: tensor-parallel 4 x data-parallel 2 + expert parallel. Pipeline parallel
 # across nodes fails in vLLM 0.33 for this model (AssertionError in _run_layers).
-COMMON="$MODEL_DIR --served-model-name dsv41 \
+COMMON="$MODEL_DIR --served-model-name $SERVED_NAME \
   --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 \
   --data-parallel-address ${HEAD_NODE} --data-parallel-rpc-port 13345 \
   --enable-expert-parallel \
-  --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --trust-remote-code"
+  --max-model-len $MAX_LEN --max-num-seqs 64 --gpu-memory-utilization 0.90 $VLLM_EXTRA_ARGS"
 
 mkdir -p "$REPO_DIR/logs"
 echo "node $SLURM_NODEID host $(hostname) ip $VLLM_HOST_IP head $HEAD_NODE"
@@ -45,12 +45,12 @@ if [ "$SLURM_NODEID" = "0" ]; then
   echo "=== server up $(date) ==="
 
   curl -s localhost:8000/v1/chat/completions -H "Content-Type: application/json" \
-    -d '{"model":"dsv41","messages":[{"role":"user","content":"Say hello in one sentence."}],"max_tokens":64}'
+    -d '{"model":"'$SERVED_NAME'","messages":[{"role":"user","content":"Say hello in one sentence."}],"max_tokens":64}'
   echo
 
   for C in 1 16 64; do
     echo "=== bench concurrency $C ==="
-    vllm bench serve --model dsv41 --tokenizer "$MODEL_DIR" --port 8000 \
+    vllm bench serve --model $SERVED_NAME --tokenizer "$MODEL_DIR" --port 8000 \
       --dataset-name random --random-input-len 1024 --random-output-len 256 \
       --num-prompts $((C*4)) --max-concurrency $C 2>&1 \
       | grep -E "Output token throughput|Mean TPOT|Mean TTFT|Successful|Failed"

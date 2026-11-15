@@ -10,7 +10,7 @@ python3 -m venv "$HF_VENV"
 "$HF_VENV/bin/pip" install -q huggingface_hub
 "$HF_VENV/bin/hf" --help >/dev/null && echo "hf CLI ready in $HF_VENV"
 
-# Sanity check: confirm the repo exists and is the size we expect (~510 GB, 84 files).
+# Sanity check: confirm the repo exists and is the size we expect for the chosen MODEL.
 curl -s "https://huggingface.co/api/models/$MODEL_REPO?blobs=true" | python3 -c '
 import sys, json
 d = json.load(sys.stdin)

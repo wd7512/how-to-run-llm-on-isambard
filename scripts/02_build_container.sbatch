@@ -32,6 +32,7 @@ print("vllm", vllm.__version__, "torch", torch.__version__, "cuda", torch.versio
       torch.cuda.is_available(), torch.cuda.get_device_name(0))
 from vllm.model_executor.models.registry import ModelRegistry
 archs = ModelRegistry.get_supported_archs()
-print("DeepseekV41ForCausalLM supported:", "DeepseekV41ForCausalLM" in archs)
+import os; a = os.environ["ARCH"]
+print(a, "supported:", a in archs)
 PY
 echo DONE
