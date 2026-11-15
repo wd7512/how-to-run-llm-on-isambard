@@ -1,0 +1,4 @@
+{
+ "container_build_gpu_hours": 0.29,
+ "note": "Measured build of the shared vLLM container (job 8483094 in the fresh-clone run, 1 GPU, 1047 s). Used when a run skipped the build because the image already existed."
+}

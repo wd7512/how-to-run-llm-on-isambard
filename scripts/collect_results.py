@@ -80,6 +80,16 @@ def main():
     hours = gpu_hours([download, build, serve])
     steps = {"download": hours.get(download, {}).get("gpu_hours"), "build": hours.get(build, {}).get("gpu_hours"),
              "serve": hours.get(serve, {}).get("gpu_hours")}
+    notes = []
+    # "GPU-hours to reproduce" must include the real download and the container build, even when this run skipped them.
+    prev_path = os.path.join(ROOT, "results", "%s_benchmarks.json" % a.model)
+    prev = json.load(open(prev_path)).get("gpu_hours", {}) if os.path.exists(prev_path) else {}
+    dl_elapsed = hours.get(download, {}).get("elapsed_s", 0)
+    if dl_elapsed < 120 and prev.get("download"):
+        steps["download"] = prev["download"]; notes.append("download cost kept from the earlier real download (this run only verified the files)")
+    if steps["build"] is None:
+        steps["build"] = json.load(open(os.path.join(ROOT, "site_src", "shared_costs.json")))["container_build_gpu_hours"]
+        notes.append("container build cost is the measured shared build (this run reused the image)")
     out = {
         "model": meta["repo"], "preset": meta["model"], "revision": meta["revision"], "date": datetime.date.today().isoformat(),
         "system": "Isambard-AI Phase 2, %d x GH200 (96 GiB HBM each), %d node%s" % (gpus, meta["nodes"], "" if meta["nodes"] == 1 else "s"),
@@ -95,7 +105,7 @@ def main():
             "run_requests": top["requests"], "run_input_tokens": top["total_input_tokens"], "run_output_tokens": top["total_output_tokens"],
             "run_duration_s": dur, "gpus": gpus, "run_gpu_hours": round(gpus * dur / 3600, 4),
             "gpu_hours_per_1m_output_tokens": round(gpus / (top["output_tok_s"] * 3600) * 1e6, 3)},
-        "gpu_hours": dict(steps, total=round(sum(v for v in steps.values() if v), 2)),
+        "gpu_hours": dict(steps, total=round(sum(v for v in steps.values() if v), 2), notes=notes),
     }
     path = os.path.join(ROOT, "results", "%s_benchmarks.json" % a.model)
     os.makedirs(os.path.dirname(path), exist_ok=True)
