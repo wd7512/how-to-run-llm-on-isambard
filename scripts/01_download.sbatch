@@ -13,8 +13,9 @@ source "$SLURM_SUBMIT_DIR/scripts/config.sh"
 module load cray-python/3.11.7
 
 mkdir -p "$MODEL_DIR"
-"$HF_VENV/bin/hf" download "$MODEL_REPO" --local-dir "$MODEL_DIR" --max-workers 16
+"$HF_VENV/bin/hf" download "$MODEL_REPO" --revision "$MODEL_REVISION" --local-dir "$MODEL_DIR" --max-workers 16
 
 # Remove fragments left by any earlier interrupted attempts.
 rm -f "$MODEL_DIR"/.cache/huggingface/download/*.incomplete
+echo "$MODEL_REVISION" > "$MODEL_DIR/.revision"   # marker: this revision is fully downloaded
 echo "DONE"; du -sh "$MODEL_DIR"

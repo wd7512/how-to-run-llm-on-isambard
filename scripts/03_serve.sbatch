@@ -10,7 +10,6 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=72
-#SBATCH --time=02:00:00
 set -u
 source "$SLURM_SUBMIT_DIR/scripts/config.sh"
 
