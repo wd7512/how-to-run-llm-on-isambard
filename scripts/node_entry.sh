@@ -22,7 +22,11 @@ export DG_JIT_CACHE_DIR=$LC/deep_gemm TRITON_CACHE_DIR=$LC/triton \
 mkdir -p "$DG_JIT_CACHE_DIR" "$TRITON_CACHE_DIR" "$VLLM_CACHE_ROOT" \
          "$TORCHINDUCTOR_CACHE_DIR" "$XDG_CACHE_HOME"
 
-# --- Fix 3: tensor-parallel 4 x data-parallel 2 + expert parallel. Pipeline parallel
+# --- Fix 3: some models JIT-compile attention kernels on first start (FlashInfer, several
+# minutes per rank). vLLM gives up after 600 s by default; the GLM-5.3 vLLM recipe uses 3600.
+export VLLM_ENGINE_READY_TIMEOUT_S=3600
+
+# --- Fix 4: tensor-parallel 4 x data-parallel 2 + expert parallel. Pipeline parallel
 # across nodes fails in vLLM 0.33 for this model (AssertionError in _run_layers).
 COMMON="$MODEL_DIR --served-model-name $SERVED_NAME \
   --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 \
