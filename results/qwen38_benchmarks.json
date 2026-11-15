@@ -1,107 +1,94 @@
 {
   "model": "Qwen/Qwen3.8-27B",
   "preset": "qwen38",
+  "revision": "37561816e66b5b9153b1b64c10968c18c1e6f4a0",
   "date": "2026-11-15",
-  "system": "Isambard-AI Phase 2, 1 x GH200 (96 GiB HBM)",
+  "system": "Isambard-AI Phase 2, 1 x GH200 (96 GiB HBM each), 1 node",
   "software": {
     "vllm": "0.33.0",
     "torch": "2.14.0+cu130",
     "cuda": "13.0",
-    "driver": "580.178.04"
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
   },
-  "layout": "1 GPU, 1 replica (TP1 x DP1)",
-  "mode": "CUDA graphs on",
+  "layout": "TP1 x DP1, 1 node(s)",
+  "vllm_args": "--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 --mm-encoder-tp-mode data",
+  "gpus": 1,
+  "job_ids": {
+    "download": "8487096",
+    "build": "none",
+    "serve": "8487097"
+  },
   "workload": {
     "tool": "vllm bench serve",
     "dataset": "random",
     "input_tokens_per_request": 1024,
     "output_tokens_per_request": 256,
-    "requests_per_level": "4 x concurrency",
-    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
   },
   "load": {
     "weights_gib_per_gpu": 51.01,
-    "load_seconds": 9,
-    "kv_cache_tokens": 508156,
-    "max_concurrency_at_262144_ctx": 1.94
+    "load_seconds": 10,
+    "kv_cache_tokens": 531547,
+    "max_concurrency_at_262144_ctx": 2.03
   },
   "results": [
     {
       "concurrency": 1,
       "requests": 4,
       "failed": 0,
-      "output_tok_s": 57.31,
-      "mean_ttft_ms": 126.7,
-      "mean_tpot_ms": 17.02
+      "output_tok_s": 57.32,
+      "mean_ttft_ms": 124.54,
+      "mean_tpot_ms": 17.02,
+      "total_input_tokens": 4096,
+      "total_output_tokens": 1024,
+      "duration_s": 17.9
     },
     {
       "concurrency": 16,
       "requests": 64,
       "failed": 0,
-      "output_tok_s": 642.32,
-      "mean_ttft_ms": 1212.61,
-      "mean_tpot_ms": 20.22
+      "output_tok_s": 641.13,
+      "mean_ttft_ms": 1223.73,
+      "mean_tpot_ms": 20.23,
+      "total_input_tokens": 65536,
+      "total_output_tokens": 16384,
+      "duration_s": 25.6
     },
     {
       "concurrency": 64,
       "requests": 256,
       "failed": 0,
-      "output_tok_s": 1398.83,
-      "mean_ttft_ms": 2196.99,
-      "mean_tpot_ms": 37.22
+      "output_tok_s": 1413.15,
+      "mean_ttft_ms": 2210.2,
+      "mean_tpot_ms": 36.71,
+      "total_input_tokens": 262144,
+      "total_output_tokens": 65536,
+      "duration_s": 46.4
     }
   ],
-  "also_measured_4_gpus": {
-    "layout": "4 GPUs, 4 replicas (DP4)",
-    "results": [
-      {
-        "concurrency": 1,
-        "requests": 4,
-        "failed": 0,
-        "output_tok_s": 57.17,
-        "mean_ttft_ms": 133.87,
-        "mean_tpot_ms": 17.03
-      },
-      {
-        "concurrency": 16,
-        "requests": 64,
-        "failed": 0,
-        "output_tok_s": 818.43,
-        "mean_ttft_ms": 325.63,
-        "mean_tpot_ms": 18.1
-      },
-      {
-        "concurrency": 64,
-        "requests": 256,
-        "failed": 0,
-        "output_tok_s": 2447.83,
-        "mean_ttft_ms": 879.3,
-        "mean_tpot_ms": 22.13
-      }
-    ]
+  "smoke_reply": {
+    "content": "\n\nHello!",
+    "has_reasoning_field": true
   },
   "cost_metric": {
     "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
     "run_requests": 256,
     "run_input_tokens": 262144,
     "run_output_tokens": 65536,
-    "input_to_output_ratio": 4,
-    "run_duration_s": 46.9,
+    "run_duration_s": 46.4,
     "gpus": 1,
-    "run_gpu_hours": 0.013,
-    "gpu_hours_per_1m_output_tokens": 0.199
+    "run_gpu_hours": 0.0129,
+    "gpu_hours_per_1m_output_tokens": 0.197
   },
-  "revision": "37561816e66b5b9153b1b64c10968c18c1e6f4a0",
-  "gpus": 1,
   "gpu_hours": {
     "download": 0.03,
     "build": 0.29,
-    "serve": 0.07,
-    "total": 0.39
-  },
-  "provenance": {
-    "scripts_commit": "e273a74",
-    "token_counts": "nominal",
-    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
+    "serve": 0.078,
+    "total": 0.4,
+    "notes": [
+      "download cost kept from the earlier real download (this run only verified the files)",
+      "container build cost is the measured shared build (this run reused the image)"
+    ]
   }
 }

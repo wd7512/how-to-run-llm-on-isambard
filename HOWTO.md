@@ -42,7 +42,7 @@ cap. When the head node finishes, it writes `logs/run_<jobid>/DONE` and the othe
 |---|---|---:|---:|---:|---:|---:|---|
 | `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 47 / 1,422 | 1.56 | ~1.53 | worked |
 | `glm53` | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 328 GB | 8 | 6.8 / 365 | 6.10 | ~2.33 | eager only |
-| `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,399 | 0.20 | ~0.39 | worked |
+| `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,413 | 0.20 | ~0.40 | worked |
 | `flint` | [Flint 40B-A2.5B](https://huggingface.co/RecursiveSI/flint) | 79.6 GB | 2 | 196 / 3,986 | 0.14 | ~0.40 | worked |
 | `mimo26` | [MiMo-V2.6-Flash](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL) | 178 GB | 4 | 230 / 2,380 | 0.47 | ~0.91 | worked |
 | `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 156 / 2,660 | 0.42 | ~0.73 | worked |
@@ -90,7 +90,7 @@ MODEL=qwen38 bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 
 MODEL=qwen38 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
-Measured: 57.3 output tok/s for one user, 1,399 at 64 users; **0.20 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.39 GPU-hours to reproduce. Layout: 1 GPU, 1 replica (TP1 x DP1).
+Measured: 57.3 output tok/s for one user, 1,413 at 64 users; **0.20 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.40 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
 
 - One GPU is enough; for more throughput raise `GPUS` and `DP_PER_NODE` together in `scripts/models/qwen38.env`.
 - With one GPU the KV cache holds only about 1.9 full-length (262k) contexts.
