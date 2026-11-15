@@ -56,6 +56,12 @@ def main():
     if not serve:
         sys.exit("no serve job id: pass --serve or run scripts/run.sh first")
     download = a.download or jobs.get("DOWNLOAD"); build = a.build or jobs.get("BUILD")
+    if (not download or download == "none") and os.path.exists(jf):
+        # this run skipped the download: use the most recent earlier run that really downloaded
+        for line in reversed(open(jf).read().strip().splitlines()):
+            d = dict(kv.split("=") for kv in line.split()).get("DOWNLOAD")
+            if d and d != "none":
+                download = d; break
     run = os.path.join(LOGS, "run_%s" % serve)
     meta = json.load(open(os.path.join(run, "meta.json")))
     results = []
