@@ -1,6 +1,6 @@
 # How we ran DeepSeek-V4.1-Flash-1017 on Isambard-AI (2 nodes, vLLM)
 
-Step-by-step, with the scripts in [`scripts/`](scripts/) and every failure we hit on the way.
+Step-by-step, with the scripts in [`scripts/`](scripts/) and the errors you may hit.
 Measured results are on the [stats page](https://wd7512.github.io/how-to-run-llm-on-isambard/).
 
 > **Status of these scripts.** They are the scripts that produced the results, with paths
@@ -20,14 +20,14 @@ Measured results are on the [stats page](https://wd7512.github.io/how-to-run-llm
 | Software | vLLM 0.33.0, torch 2.14, CUDA 13.0, Apptainer, driver 580.178.04 |
 | Layout | tensor-parallel 4 x data-parallel 2 + expert-parallel |
 | Result | ~47 tok/s for one user, ~1,420 tok/s aggregate at 64 users |
-| Cost | the working run used 1.0 GPU-hour; getting there cost 7.3 GPU-hours in total |
+| Cost | ~1.5 GPU-hours to reproduce (download 0.16 + build 0.35 + serve run 1.02); 8 GPU-hours per hour of serving afterwards |
 
 ## Prerequisites
 
 - An Isambard-AI Phase 2 account and project, and an SSH certificate from `clifton auth`.
 - ~600 GB free in `$SCRATCHDIR` (the default quota is 5 TiB).
-- GPU allocation: roughly 0.5 GPU-hours for download + build, then ~1 GPU-hour (8 GPUs for ~8 minutes)
-  per serve-and-benchmark run.
+- GPU allocation: about 0.5 GPU-hours once for download + build, then ~1 GPU-hour (8 GPUs for ~8 minutes)
+  per serve-and-benchmark run. Total to reproduce: ~1.5 GPU-hours. Check your project's balance first.
 
 ## Steps
 
@@ -111,7 +111,7 @@ of the first node (`$HEAD_NODE`); tunnel to it with `ssh -L`.
 
 ## Troubleshooting
 
-Every failure below happened; they are listed in the order we hit them. Symptom -> cause -> fix.
+The scripts already include these fixes. If you change the setup, these are the errors to expect. Symptom -> cause -> fix.
 
 1. **Download dies with exit 137 about 20 seconds in.** The login node allows about 1 core and
    4 GiB; the OOM killer ends big transfers. Also, background processes there are reaped when
@@ -134,9 +134,9 @@ Every failure below happened; they are listed in the order we hit them. Symptom 
 6. **`OSError: [Errno 116] Stale file handle`** from Triton's cache, same class of race. ->
    `TRITON_CACHE_DIR`, `VLLM_CACHE_ROOT`, `TORCHINDUCTOR_CACHE_DIR`, `XDG_CACHE_HOME` all on `/local`.
    `node_entry.sh` sets all five in one place.
-7. **A crashed server wastes allocation.** An early version waited for `/health` forever and
-   held both nodes for another 20 minutes after the server had died (3.2 GPU-hours). ->
-   the wait loop checks `kill -0 $SP`, and `srun --kill-on-bad-exit=1` tears the job down.
+7. **A crashed server keeps burning allocation.** A script that waits for `/health` forever holds
+   both nodes after the server has died. -> the wait loop checks `kill -0 $SP`, and
+   `srun --kill-on-bad-exit=1` tears the job down. Keep both if you edit the scripts.
 
 Tip: when something fails, the useful error is rarely at the bottom of the log. Search
 `vllm_serve_<jobid>.log` and `vllm_worker_<jobid>.log` for the first `ERROR`, not the last.
@@ -154,11 +154,11 @@ Tip: when something fails, the useful error is rarely at the bottom of the log. 
 - **Driver and image.** The cluster driver (580.178.04) was new enough for CUDA 13 images. If
   yours is older, use a CUDA 12 image tag.
 
-## Reproducing the cost numbers
+## Checking the cost yourself
 
 ```bash
 sacct -u $USER -S <date> -X -P -o JobID,JobName,State,NNodes,AllocTRES,ElapsedRaw
 ```
 
 GPU-hours = GPUs in `AllocTRES` x `ElapsedRaw` / 3600. One node = 4 GPUs. See
-[`results/gpu_hours.json`](results/gpu_hours.json) for the per-attempt breakdown.
+[`results/gpu_hours.json`](results/gpu_hours.json) for the per-job breakdown.

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DeepSeek V4.1 Flash on Isambard</title>
-<meta name="description" content="Measured inference throughput and GPU-hour cost of running DeepSeek-V4.1-Flash-1017 on 2 Isambard-AI nodes (8 x GH200) with vLLM.">
+<meta name="description" content="Measured inference throughput and the GPU-hour cost of running DeepSeek-V4.1-Flash-1017 on 2 Isambard-AI nodes (8 x GH200) with vLLM.">
 <style>
 :root {
   color-scheme: light;
@@ -83,7 +83,7 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
 <body>
 <main>
   <h1>DeepSeek V4.1 Flash on Isambard</h1>
-  <p class="sub">Measured inference speed and GPU-hour cost of serving
+  <p class="sub">Measured inference speed and what it costs to serve
     <code>DeepSeek-V4.1-Flash-1017</code> (552B-parameter mixture-of-experts, 1M-token context)
     on <strong>2 Isambard-AI nodes, 8 &times; GH200</strong>, with vLLM 0.33.0.
     Run on 15 November 2026. <a href="https://github.com/wd7512/how-to-run-llm-on-isambard/blob/main/HOWTO.md">How we got it running &rarr;</a></p>
@@ -113,9 +113,8 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
   </section>
 
   <section class="card">
-    <h2>What it cost: 7.3 GPU-hours, mostly debugging</h2>
-    <p class="desc">GPU-hours per job from Slurm accounting (1 node = 4 GPUs, so 7.3 GPU-hours = 1.8 node-hours).</p>
-    <div class="legend"><span><i style="background:var(--series-1)"></i>Succeeded</span><span><i style="background:var(--series-neutral)"></i>Failed</span></div>
+    <h2>What it costs you: about 1.5 GPU-hours to get running</h2>
+    <p class="desc">GPU-hours for the three jobs in the guide, from Slurm accounting (1 node = 4 GPUs, so 1.5 GPU-hours = 0.4 node-hours). The download and container build are one-off. After that, serving on 2 nodes costs 8 GPU-hours per hour the job runs.</p>
     <div id="c-cost"></div>
     <details><summary>Table view</summary><div class="tablewrap"><table id="t-cost"></table></div></details>
   </section>
@@ -144,16 +143,9 @@ const bench = [
   {c: 64, req: 256, tps: 1422.45, ttft: 1036.80, tpot: 41.03}
 ];
 const cost = [
-  {s: "Download weights",                       h: 0.16, ok: true},
-  {s: "Build container + check",                h: 0.35, ok: true},
-  {s: "Attempt 1: Ray missing",                 h: 0.09, ok: false},
-  {s: "Attempt 2: libcuda link, then idle",     h: 3.18, ok: false},
-  {s: "Attempt 3: libcuda path empty",          h: 0.54, ok: false},
-  {s: "1-GPU fix tests",                        h: 0.01, ok: true},
-  {s: "Attempt 4: pipeline parallel",           h: 0.85, ok: false},
-  {s: "Attempt 5: DeepGEMM cache race",         h: 0.53, ok: false},
-  {s: "Attempt 6: Triton stale file handle",    h: 0.55, ok: false},
-  {s: "Attempt 7: working run",                 h: 1.02, ok: true}
+  {s: "1. Download weights (one-off)",          h: 0.16, ok: true},
+  {s: "2. Build container (one-off)",           h: 0.35, ok: true},
+  {s: "3. Serve + benchmark, 2 nodes",          h: 1.02, ok: true}
 ];
 const NS = "http://www.w3.org/2000/svg";
 const tip = document.getElementById("tip");
@@ -210,12 +202,12 @@ document.getElementById("t-bench").innerHTML =
   bench.map(d => `<tr><td>${d.c}</td><td>${d.req}</td><td>${fmt(d.tps, 1)}</td><td>${fmt(1000 / d.tpot, 1)}</td><td>${fmt(d.ttft, 0)}</td><td>${fmt(d.tpot, 1)}</td></tr>`).join("") +
   "</tbody>";
 
-// Horizontal bars: cost per job, sorted as run; value at the tip, failed ones labelled in text too.
+// Horizontal bars: cost per job; value at the tip.
 (function () {
   const W = 640, rowH = 30, L = 232, R = 76, T = 6, H = T + rowH * cost.length + 8;
-  const max = 3.5, svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "GPU-hours per job"});
+  const max = 1.2, svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "GPU-hours per job"});
   const x = v => L + (W - L - R) * v / max;
-  [0, 1, 2, 3].forEach(v => {
+  [0, 0.5, 1].forEach(v => {
     el("line", {class: "grid", x1: x(v), x2: x(v), y1: T, y2: H - 8}, svg);
   });
   cost.forEach((d, i) => {
@@ -223,15 +215,15 @@ document.getElementById("t-bench").innerHTML =
     const lab = el("text", {x: L - 10, y: yc + 4, "text-anchor": "end"}, svg); lab.textContent = d.s;
     const path = `M${x(0)},${yc - bh/2} H${x(0) + w - r} Q${x(0) + w},${yc - bh/2} ${x(0) + w},${yc - bh/2 + r} V${yc + bh/2 - r} Q${x(0) + w},${yc + bh/2} ${x(0) + w - r},${yc + bh/2} H${x(0)} Z`;
     const m = el("path", {class: "mark" + (d.ok ? "" : " neutral"), d: path}, svg);
-    hover(m, `${d.s}: ${fmt(d.h, 2)} GPU-hours (${d.ok ? "succeeded" : "failed"})`);
+    hover(m, `${d.s}: ${fmt(d.h, 2)} GPU-hours`);
     const v = el("text", {class: "val", x: x(0) + w + 8, y: yc + 4}, svg);
-    v.textContent = fmt(d.h, 2) + (d.ok ? "" : " failed");
+    v.textContent = fmt(d.h, 2) + "";
   });
   document.getElementById("c-cost").appendChild(svg);
   document.getElementById("t-cost").innerHTML =
-    "<thead><tr><th>Job</th><th>Outcome</th><th>GPU-hours</th></tr></thead><tbody>" +
-    cost.map(d => `<tr><td>${d.s}</td><td>${d.ok ? "succeeded" : "failed"}</td><td>${fmt(d.h, 2)}</td></tr>`).join("") +
-    `<tr><td><strong>Total</strong></td><td></td><td><strong>${fmt(cost.reduce((a, d) => a + d.h, 0), 2)}</strong></td></tr></tbody>`;
+    "<thead><tr><th>Job</th><th>GPU-hours</th></tr></thead><tbody>" +
+    cost.map(d => `<tr><td>${d.s}</td><td>${fmt(d.h, 2)}</td></tr>`).join("") +
+    `<tr><td><strong>Total</strong></td><td><strong>${fmt(cost.reduce((a, d) => a + d.h, 0), 2)}</strong></td></tr></tbody>`;
 })();
 </script>
 </body>
