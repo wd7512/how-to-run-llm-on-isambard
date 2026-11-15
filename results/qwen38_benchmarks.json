@@ -90,5 +90,18 @@
     "gpus": 1,
     "run_gpu_hours": 0.013,
     "gpu_hours_per_1m_output_tokens": 0.199
+  },
+  "revision": "37561816e66b5b9153b1b64c10968c18c1e6f4a0",
+  "gpus": 1,
+  "gpu_hours": {
+    "download": 0.03,
+    "build": 0.29,
+    "serve": 0.07,
+    "total": 0.39
+  },
+  "provenance": {
+    "scripts_commit": "e273a74",
+    "token_counts": "nominal",
+    "note": "Run before the one-command pipeline; numbers copied from the job logs by hand."
   }
 }

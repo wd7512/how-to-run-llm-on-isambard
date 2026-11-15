@@ -1,0 +1,130 @@
+{
+ "dsv41": {
+  "order": 1,
+  "label": "DeepSeek-V4.1-Flash",
+  "hf": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+  "weights_gb": 510,
+  "summary": "552B-parameter MoE, FP8 + FP4 experts, 1M context",
+  "status": "worked",
+  "description": "<code>DeepSeek-V4.1-Flash-1017</code>: 552B-parameter mixture-of-experts, 1M-token context, FP8 with FP4 experts, 510 GB. Needs 2 nodes (8 GPUs): the weights alone exceed one node's memory.",
+  "notes": [
+   "Layout is tensor-parallel 4 per node x data-parallel 2 + expert parallel. Pipeline parallel across nodes fails in vLLM 0.33 for this model (<code>AssertionError</code> in <code>_run_layers</code>).",
+   "vLLM puts the ~196B-parameter Engram embedding tables in pinned host RAM by itself (about 24 GiB per rank).",
+   "Ray is not in the vLLM image, so the run uses vLLM's built-in multi-node data-parallel mode."
+  ],
+  "caveats": []
+ },
+ "glm53": {
+  "order": 2,
+  "label": "GLM-5.3-Flash",
+  "hf": "zai-org/GLM-5.3-Flash",
+  "weights_gb": 328,
+  "summary": "MoE with 288 experts, FP8, 1M context",
+  "status": "eager only",
+  "description": "<code>zai-org/GLM-5.3-Flash</code>: MoE with 288 routed experts, 1M-token context, FP8, 328 GB. Needs 2 nodes. Runs with <code>--enforce-eager</code> because CUDA graphs hang on this layout, so these numbers are a floor, not the best this hardware can do.",
+  "notes": [
+   "CUDA-graph capture hung at 12/19 for 22 minutes with no error (DP 2 x TP 4 + EP), so the preset uses <code>--enforce-eager</code>. Open item: find a graph mode that works, or try TP 8 across both nodes as the vLLM recipe does on one 8-GPU node.",
+   "First start JIT-compiles FlashInfer kernels and vLLM gives up after 600 s by default: <code>VLLM_ENGINE_READY_TIMEOUT_S=3600</code> is set in <code>node_entry.sh</code>.",
+   "The recipe's <code>glm5_next</code> tokenizer mode needs the Rust frontend, so the tokenizer is left on auto."
+  ],
+  "caveats": [
+   "Eager mode only: decode is several times slower than it could be. Fixing that is the main open item."
+  ]
+ },
+ "qwen38": {
+  "order": 3,
+  "label": "Qwen3.8-27B",
+  "hf": "Qwen/Qwen3.8-27B",
+  "weights_gb": 55.6,
+  "summary": "Dense 27B, bf16, 262k context",
+  "status": "worked",
+  "description": "<code>Qwen/Qwen3.8-27B</code>: dense 27B, bf16, 55.6 GB, 262k context. Fits on a single GPU (51 GiB of weights).",
+  "notes": [
+   "One GPU is enough; for more throughput raise <code>GPUS</code> and <code>DP_PER_NODE</code> together in <code>scripts/models/qwen38.env</code>.",
+   "With one GPU the KV cache holds only about 1.9 full-length (262k) contexts."
+  ],
+  "caveats": [
+   "With only about 2 full-length contexts of KV cache, long-context use on one GPU is limited."
+  ]
+ },
+ "flint": {
+  "order": 4,
+  "label": "Flint 40B-A2.5B",
+  "hf": "RecursiveSI/flint",
+  "weights_gb": 79.6,
+  "summary": "39.8B MoE, ~2.5B active, bf16 (base of the JANGH2 quant)",
+  "status": "worked",
+  "description": "<code>RecursiveSI/flint</code>: 39.8B MoE with ~2.5B active parameters, 256 experts, bf16, 79.6 GB, 262k context. This is the unquantised base of <code>OsaurusAI/Flint-40B-A2.5B-JANGH2</code>; that checkpoint is an Apple-Silicon (MLX) format that vLLM cannot load.",
+  "notes": [
+   "<code>OsaurusAI/Flint-40B-A2.5B-JANGH2</code> will not load: it is an MLX checkpoint with a custom JANGH 2-bit quantisation. The preset serves the BF16 base instead.",
+   "vLLM picks the FLASH_ATTN backend by default but the Flint model code asserts FlashInfer: the preset sets <code>--attention-backend FLASHINFER</code>.",
+   "The dense-MLP kernel needs (6144 / TP) to be a multiple of 1024, so tensor-parallel must be 1, 2 or 8. TP 4 fails with <code>assert d % bd == 0</code>. The preset uses TP 2 on 2 GPUs."
+  ],
+  "caveats": [
+   "This is the BF16 base model, not the JANGH2 2-bit checkpoint. The quantised file's speed and quality on Apple hardware are not measured here.",
+   "The preset sets no reasoning or tool parser."
+  ]
+ },
+ "mimo26": {
+  "order": 5,
+  "label": "MiMo-V2.6-Flash",
+  "hf": "XiaomiMiMo/MiMo-V2.6-Flash-RL",
+  "weights_gb": 178,
+  "summary": "MoE, 256 experts, FP8 compute, 1M context",
+  "status": "worked",
+  "description": "<code>XiaomiMiMo/MiMo-V2.6-Flash-RL</code>: MoE with 256 experts, 1M-token context, FP8 compute from mxfp4-stored weights, 178 GB.",
+  "notes": [
+   "Needs vLLM 0.31 or newer for the mxfp4 weights (the image has 0.33).",
+   "The vLLM recipe recommends the <code>-MOPD</code> checkpoint over this <code>-RL</code> one, because <code>-RL</code> can get stuck repeating tool calls. The preset runs the <code>-RL</code> checkpoint; that behaviour was not tested.",
+   "4 GPUs is the recipe's minimum; 2 GPUs would not hold the 178 GB of weights plus KV cache."
+  ],
+  "caveats": [
+   "This is the -RL checkpoint; the recipe recommends -MOPD for agentic use (tool-call repetition not tested here)."
+  ]
+ },
+ "qwen38flash": {
+  "order": 6,
+  "label": "Qwen3.8-Flash-Next",
+  "hf": "Qwen/Qwen3.8-Flash-Next",
+  "weights_gb": 360,
+  "summary": "125B MoE (6B active) + 51B n-gram embedding, bf16",
+  "status": "worked",
+  "description": "<code>Qwen/Qwen3.8-Flash-Next</code>: MoE, 125B total and 6B active parameters plus a 51B n-gram embedding table, 512 experts, bf16, 360 GB. The embedding table is offloaded to host RAM, leaving 61 GiB of weights per GPU.",
+  "notes": [
+   "The n-gram embedding table is offloaded to host RAM by default, so the job needs the host memory of a full 4-GPU allocation.",
+   "The recipe says to keep <code>--max-num-seqs 256</code> (smaller values hit a Mamba-cache capacity error); it is in the preset's extra args and overrides the default of 64.",
+   "Plain bf16: no speculative decoding (MTP) and no FP8 KV cache. The vendor recipe's faster settings target B200 GPUs and were not tried on GH200."
+  ],
+  "caveats": [
+   "The vendor recipe notes a single 262k-token request was not tested."
+  ]
+ },
+ "gemma31b": {
+  "order": 7,
+  "label": "Gemma 4 31B",
+  "hf": "google/gemma-4-31B",
+  "weights_gb": 62.6,
+  "summary": "Dense 31B, bf16, 262k context",
+  "status": "worked",
+  "description": "<code>google/gemma-4-31B</code>: dense 31B, bf16, 62.6 GB, 262k context, Apache-2.0. Fits on a single GPU.",
+  "notes": [
+   "Ungated, so no Hugging Face token is needed.",
+   "Uses vLLM's <code>gemma4</code> reasoning and tool-call parsers."
+  ],
+  "caveats": []
+ },
+ "gemma26b": {
+  "order": 8,
+  "label": "Gemma 4 26B-A4B",
+  "hf": "google/gemma-4-26B-A4B",
+  "weights_gb": 51.6,
+  "summary": "MoE, 128 experts (8 active), ~4B active, bf16",
+  "status": "worked",
+  "description": "<code>google/gemma-4-26B-A4B</code>: MoE with 128 experts (8 active, about 4B active parameters), bf16, 51.6 GB, 262k context, Apache-2.0. Fits on a single GPU.",
+  "notes": [
+   "Ungated, so no Hugging Face token is needed.",
+   "Uses vLLM's <code>gemma4</code> reasoning and tool-call parsers."
+  ],
+  "caveats": []
+ }
+}
