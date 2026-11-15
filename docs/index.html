@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepSeek V4.1 Flash on Isambard</title>
+<meta name="description" content="Measured inference throughput and GPU-hour cost of running DeepSeek-V4.1-Flash-1017 on 2 Isambard-AI nodes (8 x GH200) with vLLM.">
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f7f7f5;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #75746f;
+  --grid: #e4e3df;
+  --series-1: #2a78d6;
+  --series-neutral: #a8a79f;
+  --link: #1d5fb0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #9a998f;
+    --grid: #2e2e2b;
+    --series-1: #3987e5;
+    --series-neutral: #6b6a63;
+    --link: #6aa7f0;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211; --surface-1: #1a1a19;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #9a998f;
+  --grid: #2e2e2b; --series-1: #3987e5; --series-neutral: #6b6a63; --link: #6aa7f0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--surface-0); color: var(--text-primary);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+h2 { font-size: 18px; margin: 0 0 4px; }
+p { margin: 0 0 12px; color: var(--text-secondary); }
+a { color: var(--link); }
+.sub { font-size: 15px; max-width: 70ch; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 24px 0; }
+.tile, .card { background: var(--surface-1); border: 1px solid var(--grid); border-radius: 12px; padding: 16px; }
+.tile .label { font-size: 13px; color: var(--text-secondary); }
+.tile .value { font-size: 36px; font-weight: 650; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tile .note { font-size: 13px; color: var(--text-muted); margin: 2px 0 0; }
+.card { margin-bottom: 16px; }
+.card .desc { font-size: 14px; color: var(--text-muted); margin-bottom: 8px; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { fill: var(--text-secondary); font: 12px system-ui, sans-serif; }
+svg text.val { fill: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+svg .grid { stroke: var(--grid); stroke-width: 1; }
+svg .mark { fill: var(--series-1); }
+svg .mark.neutral { fill: var(--series-neutral); }
+svg .mark:hover { opacity: .8; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); margin: 4px 0 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; min-width: 440px; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--text-secondary); font-weight: 600; }
+details summary { cursor: pointer; color: var(--link); font-size: 14px; margin-top: 8px; }
+.tip {
+  position: fixed; pointer-events: none; z-index: 5; display: none;
+  background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--grid);
+  border-radius: 8px; padding: 6px 10px; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+.caveats li { color: var(--text-secondary); margin-bottom: 6px; }
+footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>DeepSeek V4.1 Flash on Isambard</h1>
+  <p class="sub">Measured inference speed and GPU-hour cost of serving
+    <code>DeepSeek-V4.1-Flash-1017</code> (552B-parameter mixture-of-experts, 1M-token context)
+    on <strong>2 Isambard-AI nodes, 8 &times; GH200</strong>, with vLLM 0.33.0.
+    Run on 15 November 2026. <a href="https://github.com/wd7512/how-to-run-llm-on-isambard/blob/main/HOWTO.md">How we got it running &rarr;</a></p>
+
+  <section class="tiles" aria-label="Headline numbers">
+    <div class="tile"><div class="label">Single user, output speed</div><div class="value">47 tok/s</div><p class="note">time to first token 231 ms</p></div>
+    <div class="tile"><div class="label">Aggregate at 64 concurrent users</div><div class="value">1,422 tok/s</div><p class="note">each user still sees ~24 tok/s</p></div>
+    <div class="tile"><div class="label">Concurrent 262k-token contexts held</div><div class="value">48.5&times;</div><p class="note">12.7M tokens of KV cache across 8 GPUs</p></div>
+  </section>
+
+  <section class="card">
+    <h2>Aggregate output throughput</h2>
+    <p class="desc">Total tokens generated per second across all users, by number of concurrent requests.</p>
+    <div id="c-throughput"></div>
+  </section>
+
+  <section class="card">
+    <h2>Speed each user sees</h2>
+    <p class="desc">Decode speed per request (1000 / mean time per output token). Falls as the server gets busier.</p>
+    <div id="c-peruser"></div>
+  </section>
+
+  <section class="card">
+    <h2>Latency and the numbers behind the charts</h2>
+    <div class="tablewrap"><table id="t-bench"></table></div>
+    <p class="desc" style="margin-top:8px">Workload: <code>vllm bench serve</code>, random prompts, 1,024 input and 256 output tokens, 4 &times; concurrency requests per level, 0 failed. One run, no repeats.</p>
+  </section>
+
+  <section class="card">
+    <h2>What it cost: 7.3 GPU-hours, mostly debugging</h2>
+    <p class="desc">GPU-hours per job from Slurm accounting (1 node = 4 GPUs, so 7.3 GPU-hours = 1.8 node-hours).</p>
+    <div class="legend"><span><i style="background:var(--series-1)"></i>Succeeded</span><span><i style="background:var(--series-neutral)"></i>Failed</span></div>
+    <div id="c-cost"></div>
+    <details><summary>Table view</summary><div class="tablewrap"><table id="t-cost"></table></div></details>
+  </section>
+
+  <section class="card">
+    <h2>Caveats</h2>
+    <ul class="caveats">
+      <li>Short prompts only. Nothing here measures a 250k-token prompt (prefill time or long-context decode speed).</li>
+      <li>One working run, no repeats, so no error bars.</li>
+      <li>The published scripts were parameterised after this run (no hard-coded paths or project names) and have not been re-run end-to-end.</li>
+      <li>Replies in the smoke test began with a stray <code>&lt;/think&gt;</code> token; the cause was not investigated.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Source, scripts and raw results:
+    <a href="https://github.com/wd7512/how-to-run-llm-on-isambard">github.com/wd7512/how-to-run-llm-on-isambard</a>
+  </footer>
+</main>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+const bench = [
+  {c: 1,  req: 4,   tps: 47.01,   ttft: 230.90,  tpot: 20.45},
+  {c: 16, req: 64,  tps: 490.99,  ttft: 690.89,  tpot: 29.99},
+  {c: 64, req: 256, tps: 1422.45, ttft: 1036.80, tpot: 41.03}
+];
+const cost = [
+  {s: "Download weights",                       h: 0.16, ok: true},
+  {s: "Build container + check",                h: 0.35, ok: true},
+  {s: "Attempt 1: Ray missing",                 h: 0.09, ok: false},
+  {s: "Attempt 2: libcuda link, then idle",     h: 3.18, ok: false},
+  {s: "Attempt 3: libcuda path empty",          h: 0.54, ok: false},
+  {s: "1-GPU fix tests",                        h: 0.01, ok: true},
+  {s: "Attempt 4: pipeline parallel",           h: 0.85, ok: false},
+  {s: "Attempt 5: DeepGEMM cache race",         h: 0.53, ok: false},
+  {s: "Attempt 6: Triton stale file handle",    h: 0.55, ok: false},
+  {s: "Attempt 7: working run",                 h: 1.02, ok: true}
+];
+const NS = "http://www.w3.org/2000/svg";
+const tip = document.getElementById("tip");
+function el(name, attrs, parent) {
+  const e = document.createElementNS(NS, name);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function hover(node, text) {
+  node.addEventListener("mousemove", ev => {
+    tip.textContent = text; tip.style.display = "block";
+    tip.style.left = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = (ev.clientY + 14) + "px";
+  });
+  node.addEventListener("mouseleave", () => tip.style.display = "none");
+}
+const fmt = (n, d = 0) => n.toLocaleString("en-GB", {minimumFractionDigits: d, maximumFractionDigits: d});
+
+// Column chart: one series, value on the cap, 24px max thickness, 4px rounded data-end.
+function columns(target, data, valueKey, unit, tipFn, decimals) {
+  const W = 640, H = 240, L = 48, R = 12, T = 24, B = 40;
+  const max = Math.max(...data.map(d => d[valueKey]));
+  // Round tick step (1, 2 or 5 x 10^k) giving 3-6 intervals.
+  const mag = Math.pow(10, Math.floor(Math.log10(max / 4)));
+  const step = [1, 2, 5, 10].map(m => m * mag).find(s => Math.ceil(max / s) <= 6) || 10 * mag;
+  const n = Math.ceil(max / step), top = n * step;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": target.previousElementSibling.textContent});
+  const y = v => T + (H - T - B) * (1 - v / top);
+  for (let i = 0; i <= n; i++) {
+    const v = step * i;
+    el("line", {class: "grid", x1: L, x2: W - R, y1: y(v), y2: y(v)}, svg);
+    const t = el("text", {x: L - 8, y: y(v) + 4, "text-anchor": "end"}, svg); t.textContent = fmt(v);
+  }
+  const band = (W - L - R) / data.length, bw = 24;
+  data.forEach((d, i) => {
+    const cx = L + band * i + band / 2, y0 = y(0), y1 = y(d[valueKey]), h = y0 - y1, r = Math.min(4, h);
+    const path = `M${cx - bw/2},${y0} V${y1 + r} Q${cx - bw/2},${y1} ${cx - bw/2 + r},${y1} H${cx + bw/2 - r} Q${cx + bw/2},${y1} ${cx + bw/2},${y1 + r} V${y0} Z`;
+    const m = el("path", {class: "mark", d: path}, svg);
+    hover(m, tipFn(d));
+    const v = el("text", {class: "val", x: cx, y: y1 - 6, "text-anchor": "middle"}, svg); v.textContent = fmt(d[valueKey], decimals) + (unit ? " " + unit : "");
+    const x = el("text", {x: cx, y: H - B + 18, "text-anchor": "middle"}, svg); x.textContent = d.c === 1 ? "1 user" : d.c + " users";
+  });
+  target.appendChild(svg);
+}
+
+columns(document.getElementById("c-throughput"), bench, "tps", "", d =>
+  `${d.c} concurrent: ${fmt(d.tps, 1)} tok/s aggregate`, 0);
+columns(document.getElementById("c-peruser"), bench.map(d => ({...d, pu: 1000 / d.tpot})), "pu", "", d =>
+  `${d.c} concurrent: ${fmt(d.pu, 1)} tok/s per user`, 0);
+
+document.getElementById("t-bench").innerHTML =
+  "<thead><tr><th>Concurrent users</th><th>Requests</th><th>Aggregate tok/s</th><th>Per-user tok/s</th><th>TTFT (ms)</th><th>TPOT (ms)</th></tr></thead><tbody>" +
+  bench.map(d => `<tr><td>${d.c}</td><td>${d.req}</td><td>${fmt(d.tps, 1)}</td><td>${fmt(1000 / d.tpot, 1)}</td><td>${fmt(d.ttft, 0)}</td><td>${fmt(d.tpot, 1)}</td></tr>`).join("") +
+  "</tbody>";
+
+// Horizontal bars: cost per job, sorted as run; value at the tip, failed ones labelled in text too.
+(function () {
+  const W = 640, rowH = 30, L = 232, R = 76, T = 6, H = T + rowH * cost.length + 8;
+  const max = 3.5, svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "GPU-hours per job"});
+  const x = v => L + (W - L - R) * v / max;
+  [0, 1, 2, 3].forEach(v => {
+    el("line", {class: "grid", x1: x(v), x2: x(v), y1: T, y2: H - 8}, svg);
+  });
+  cost.forEach((d, i) => {
+    const yc = T + rowH * i + rowH / 2, bh = 16, w = Math.max(2, x(d.h) - x(0)), r = Math.min(4, w);
+    const lab = el("text", {x: L - 10, y: yc + 4, "text-anchor": "end"}, svg); lab.textContent = d.s;
+    const path = `M${x(0)},${yc - bh/2} H${x(0) + w - r} Q${x(0) + w},${yc - bh/2} ${x(0) + w},${yc - bh/2 + r} V${yc + bh/2 - r} Q${x(0) + w},${yc + bh/2} ${x(0) + w - r},${yc + bh/2} H${x(0)} Z`;
+    const m = el("path", {class: "mark" + (d.ok ? "" : " neutral"), d: path}, svg);
+    hover(m, `${d.s}: ${fmt(d.h, 2)} GPU-hours (${d.ok ? "succeeded" : "failed"})`);
+    const v = el("text", {class: "val", x: x(0) + w + 8, y: yc + 4}, svg);
+    v.textContent = fmt(d.h, 2) + (d.ok ? "" : " failed");
+  });
+  document.getElementById("c-cost").appendChild(svg);
+  document.getElementById("t-cost").innerHTML =
+    "<thead><tr><th>Job</th><th>Outcome</th><th>GPU-hours</th></tr></thead><tbody>" +
+    cost.map(d => `<tr><td>${d.s}</td><td>${d.ok ? "succeeded" : "failed"}</td><td>${fmt(d.h, 2)}</td></tr>`).join("") +
+    `<tr><td><strong>Total</strong></td><td></td><td><strong>${fmt(cost.reduce((a, d) => a + d.h, 0), 2)}</strong></td></tr></tbody>`;
+})();
+</script>
+</body>
+</html>

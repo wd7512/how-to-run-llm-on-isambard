@@ -1,0 +1,17 @@
+{
+  "note": "GPU-hours from Slurm accounting (sacct). 1 Isambard-AI node = 4 GPUs, so 7.29 GPU-hours = 1.82 node-hours.",
+  "attempts": [
+    {"step": "Download weights (1 GPU)",            "gpu_hours": 0.16, "outcome": "ok"},
+    {"step": "Build container + check (1 GPU)",    "gpu_hours": 0.35, "outcome": "ok"},
+    {"step": "2-node attempt 1: Ray missing",      "gpu_hours": 0.09, "outcome": "failed"},
+    {"step": "2-node attempt 2: Triton libcuda + idle after crash", "gpu_hours": 3.18, "outcome": "failed"},
+    {"step": "2-node attempt 3: Triton libcuda path empty", "gpu_hours": 0.54, "outcome": "failed"},
+    {"step": "1-GPU fix tests",                    "gpu_hours": 0.01, "outcome": "ok"},
+    {"step": "2-node attempt 4: pipeline parallel", "gpu_hours": 0.85, "outcome": "failed"},
+    {"step": "2-node attempt 5: DeepGEMM cache race", "gpu_hours": 0.53, "outcome": "failed"},
+    {"step": "2-node attempt 6: Triton stale file handle", "gpu_hours": 0.55, "outcome": "failed"},
+    {"step": "2-node attempt 7: working run",      "gpu_hours": 1.02, "outcome": "ok"}
+  ],
+  "total_gpu_hours": 7.29,
+  "total_node_hours": 1.82
+}
