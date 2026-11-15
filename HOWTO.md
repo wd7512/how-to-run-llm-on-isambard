@@ -74,7 +74,7 @@ Notes: Isambard-AI is aarch64, so only `linux/arm64` images work. The log is ful
 
 ```bash
 bash scripts/03_serve.sh          # requests the nodes and GPUs from the model file
-tail -f logs/serve-2node_<jobid>.out
+tail -f logs/serve-<model>_<jobid>.out
 ```
 
 Approximate timeline of a healthy `dsv41` run (figures from the logs; clock times rounded). `glm53`

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs INSIDE the container, once per node (launched by 03_serve_2node.sbatch).
+# Runs INSIDE the container, once per node (launched by 03_serve.sbatch).
 # Node 0 = API server + benchmarks. Other nodes (NODES>1) = headless data-parallel workers.
 set -u
 source "$REPO_DIR/scripts/config.sh"
