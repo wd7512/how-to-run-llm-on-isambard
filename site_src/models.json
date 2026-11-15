@@ -106,9 +106,10 @@
   "weights_gb": 62.6,
   "summary": "Dense 31B, bf16, 262k context",
   "status": "worked",
-  "description": "<code>google/gemma-4-31B</code>: dense 31B, bf16, 62.6 GB, 262k context, Apache-2.0. Fits on a single GPU.",
+  "description": "<code>google/gemma-4-31B</code>: dense 31B, bf16, 62.6 GB, 262k context, Apache-2.0. The weights fit on one GPU, but a full 262k context needs 2.",
   "notes": [
    "Ungated, so no Hugging Face token is needed.",
+   "On one GPU vLLM refuses to start at 262,144 context: the weights take 58 GiB, leaving 24.5 GiB, and the KV cache for one 262k sequence needs 33.3 GiB (max context on 1 GPU is about 147k). The preset uses 2 GPUs (tensor-parallel 2).",
    "Uses vLLM's <code>gemma4</code> reasoning and tool-call parsers."
   ],
   "caveats": []
