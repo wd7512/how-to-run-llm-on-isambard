@@ -95,7 +95,7 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
 
   <section class="card">
     <h2>All models: speed vs cost</h2>
-    <p class="desc">Each dot is a model. Up is faster for one user. Left is cheaper: GPU-hours needed to generate one million output tokens with 64 users at once (GPUs &divide; aggregate tok/s &divide; 3,600 &times; 1,000,000, from the benchmark below: 1,024 input and 256 output tokens). Click a dot to open that model.</p>
+    <p class="desc">Each dot is a model. Up is faster for one user. Left is cheaper: GPU-hours needed to generate one million output tokens with 64 users at once. The cost is measured on one fixed workload, so it is only comparable under it: <strong>every request has 1,024 input tokens and 256 output tokens</strong> (4 input tokens for every output token), 256 requests per run, random-token prompts. Formula: GPUs &divide; aggregate output tok/s &divide; 3,600 &times; 1,000,000. Click a dot to open that model.</p>
     <div id="c-scatter"></div>
     <details><summary>Table view</summary><div class="tablewrap"><table id="t-scatter"></table></div></details>
   </section>
@@ -115,7 +115,7 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
   <section class="card">
     <h2>Latency and the numbers behind the charts</h2>
     <div class="tablewrap"><table id="t-bench"></table></div>
-    <p class="desc" style="margin-top:8px">Workload: <code>vllm bench serve</code>, random prompts, 1,024 input and 256 output tokens, 4 &times; concurrency requests per level, 0 failed. One run, no repeats.</p>
+    <p class="desc" style="margin-top:8px">Workload: <code>vllm bench serve</code>, random prompts, 1,024 input and 256 output tokens per request, 4 &times; concurrency requests per level (the 64-user run is 256 requests: 262,144 input and 65,536 output tokens), 0 failed. One run, no repeats.</p>
   </section>
 
   <section class="card">
@@ -305,20 +305,20 @@ function scatter() {
     el("line", {class: "grid", x1: xs(v), x2: xs(v), y1: T, y2: H - B}, svg);
     const t = el("text", {x: xs(v), y: H - B + 18, "text-anchor": "middle"}, svg); t.textContent = v;
   });
-  const xl = el("text", {x: (L + W - R) / 2, y: H - 8, "text-anchor": "middle"}, svg); xl.textContent = "GPU-hours per 1M output tokens (log scale)";
+  const xl = el("text", {x: (L + W - R) / 2, y: H - 8, "text-anchor": "middle"}, svg); xl.textContent = "GPU-hours per 1M output tokens (1,024 in / 256 out per request)";
   const yl = el("text", {x: 12, y: (T + H - B) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(T + H - B) / 2})`}, svg); yl.textContent = "Single-user tok/s";
   pts.forEach(p => {
     const cx = xs(p.x), cy = ys(p.y), cur = p.k === current, left = cx > W * 0.66;
     const g = el("g", {style: "cursor:pointer"}, svg);
     el("circle", {cx, cy, r: 7, class: "dot" + (cur ? " cur" : "")}, g);
     const t = el("text", {class: "val", x: left ? cx - 12 : cx + 12, y: cy + 4, "text-anchor": left ? "end" : "start"}, g); t.textContent = p.label;
-    hover(g, `${p.label}: ${fmt(p.y, 0)} tok/s for one user; ${fmt(p.x, 2)} GPU-hours per 1M output tokens (${p.gpus} GPU${p.gpus > 1 ? "s" : ""}, ${fmt(p.agg, 0)} tok/s at 64 users)`);
+    hover(g, `${p.label}: ${fmt(p.y, 0)} tok/s for one user; ${fmt(p.x, 2)} GPU-hours per 1M output tokens (${p.gpus} GPU${p.gpus > 1 ? "s" : ""}, ${fmt(p.agg, 0)} tok/s at 64 users; 1,024 in / 256 out per request)`);
     g.addEventListener("click", () => { current = p.k; history.replaceState(null, "", "?model=" + current); render(); });
   });
   document.getElementById("c-scatter").appendChild(svg);
   document.getElementById("t-scatter").innerHTML =
-    "<thead><tr><th>Model</th><th>GPUs</th><th>1-user tok/s</th><th>64-user tok/s</th><th>GPU-hours per 1M output tokens</th></tr></thead><tbody>" +
-    pts.map(p => `<tr><td>${p.label}</td><td>${p.gpus}</td><td>${fmt(p.y, 1)}</td><td>${fmt(p.agg, 0)}</td><td>${fmt(p.x, 2)}</td></tr>`).join("") + "</tbody>";
+    "<thead><tr><th>Model</th><th>GPUs</th><th>1-user tok/s</th><th>64-user tok/s</th><th>GPU-hours per 1M output tokens</th><th>64-user test: tokens in / out</th><th>Test duration (s)</th><th>Test GPU-hours</th></tr></thead><tbody>" +
+    pts.map(p => `<tr><td>${p.label}</td><td>${p.gpus}</td><td>${fmt(p.y, 1)}</td><td>${fmt(p.agg, 0)}</td><td>${fmt(p.x, 2)}</td><td>262,144 / 65,536</td><td>${fmt(65536 / p.agg, 0)}</td><td>${fmt(p.gpus * 65536 / p.agg / 3600, 3)}</td></tr>`).join("") + "</tbody>";
 }
 
 function render() {

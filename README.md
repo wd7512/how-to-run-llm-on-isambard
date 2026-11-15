@@ -19,13 +19,15 @@ measured speed, and what it costs you in GPU-hours. One switch picks the model.
 | `mimo26` | MiMo-V2.6-Flash-RL | 178 GB | 4 (1 node) | 230 / 2,380 | 0.47 | ~0.9 | worked |
 | `qwen38flash` | Qwen3.8-Flash-Next | 360 GB | 4 (1 node) | 156 / 2,660 | 0.42 | ~0.7 | worked |
 
-**GPU-hours per 1M output tokens** is the comparable cost: GPUs ÷ aggregate tok/s at 64 users ÷ 3,600 × 1,000,000
-(lower is cheaper; the [stats page](https://wd7512.github.io/how-to-run-llm-on-isambard/) plots it against single-user speed).
+**GPU-hours per 1M output tokens** is the comparable cost: GPUs ÷ aggregate output tok/s at 64 users ÷ 3,600 × 1,000,000
+(lower is cheaper). It is only meaningful under the fixed workload: **every request is 1,024 input + 256 output tokens**
+(4 input tokens per output token), 256 requests per run, random-token prompts, 64 at a time. A different
+input/output ratio changes the number ([`scripts/node_entry.sh`](scripts/node_entry.sh) has the exact command;
+ the [stats page](https://wd7512.github.io/how-to-run-llm-on-isambard/) plots it against single-user speed).
 
 Isambard-AI charges per GPU (1 GPU = 0.25 node-hours per hour), so the small models are requested with only
 the GPUs they need: set per model with `GPUS` in `scripts/models/<name>.env`. GPU-hours = download +
-container build (shared, ~0.3) + one serve-and-benchmark run. Benchmarks use short prompts (1,024 in /
-256 out) and one run each.
+container build (shared, ~0.3) + one serve-and-benchmark run. Benchmarks use 1,024 input / 256 output tokens per request and one run each.
 
 `OsaurusAI/Flint-40B-A2.5B-JANGH2` itself is an Apple-Silicon (MLX) checkpoint that vLLM cannot load, so the
 `flint` preset serves the original BF16 model it was made from.

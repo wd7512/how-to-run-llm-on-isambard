@@ -173,6 +173,24 @@ Tip: when something fails, the useful error is rarely at the bottom of the log. 
 - **Driver and image.** The cluster driver (580.178.04) was new enough for CUDA 13 images. If
   yours is older, use a CUDA 12 image tag.
 
+## Reproducing the benchmark and the cost metric
+
+Every number on the stats page comes from this workload, run by `node_entry.sh` after the smoke test:
+
+```bash
+vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 \
+  --dataset-name random --random-input-len 1024 --random-output-len 256 \
+  --num-prompts $((4*C)) --max-concurrency $C        # C = 1, 16, 64
+```
+
+- **Input tokens:** 1,024 per request, random tokens (so no prompt-cache hits). **Output tokens:** 256 per request.
+  That is 4 input tokens for every output token, so each output token carries 4 tokens of prefill.
+- **The 64-user run** is 256 requests: **262,144 input and 65,536 output tokens** in total.
+- **GPU-hours per 1M output tokens** = `GPUs / output_tok_s / 3600 * 1e6`, using that run. The model's
+  `results/<name>_benchmarks.json` has these token counts, the run duration and the GPU-hours of the run
+  itself under `cost_metric`. Change the input or output length and the metric changes with it, so quote
+  the token counts whenever you quote the number.
+
 ## Checking the cost yourself
 
 ```bash

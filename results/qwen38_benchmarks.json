@@ -12,10 +12,12 @@
   "layout": "1 GPU, 1 replica (TP1 x DP1)",
   "mode": "CUDA graphs on",
   "workload": {
-    "dataset": "vllm bench serve --dataset-name random",
-    "input_tokens": 1024,
-    "output_tokens": 256,
-    "prompts_per_level": "4 x concurrency"
+    "tool": "vllm bench serve",
+    "dataset": "random",
+    "input_tokens_per_request": 1024,
+    "output_tokens_per_request": 256,
+    "requests_per_level": "4 x concurrency",
+    "command_template": "vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 --dataset-name random --random-input-len 1024 --random-output-len 256 --num-prompts <4*C> --max-concurrency <C>"
   },
   "load": {
     "weights_gib_per_gpu": 51.01,
@@ -77,5 +79,16 @@
         "mean_tpot_ms": 22.13
       }
     ]
+  },
+  "cost_metric": {
+    "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
+    "run_requests": 256,
+    "run_input_tokens": 262144,
+    "run_output_tokens": 65536,
+    "input_to_output_ratio": 4,
+    "run_duration_s": 46.9,
+    "gpus": 1,
+    "run_gpu_hours": 0.013,
+    "gpu_hours_per_1m_output_tokens": 0.199
   }
 }
