@@ -5,5 +5,4 @@ set -eu
 cd "$(dirname "$0")/.."
 source scripts/config.sh
 mkdir -p logs
-sbatch --nodes="$NODES" --gpus-per-node="$GPUS" --cpus-per-task=$((18 * GPUS)) \
-       --job-name="serve-$MODEL" scripts/03_serve.sbatch
+sbatch --nodes="$NODES" --gpus-per-node="$GPUS" --job-name="serve-$MODEL" scripts/03_serve.sbatch

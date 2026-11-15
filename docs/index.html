@@ -131,7 +131,7 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
 <script>
 const MODELS = {
   dsv41: {
-    label: "DeepSeek-V4.1-Flash",
+    label: "DeepSeek-V4.1-Flash", hw: "2 Isambard-AI nodes, 8 &times; GH200", rate: 8,
     sub: `<code>DeepSeek-V4.1-Flash-1017</code>: 552B-parameter mixture-of-experts, 1M-token context, FP8 + FP4, 510 GB.`,
     bench: [
       {c: 1,  req: 4,   tps: 47.01,   ttft: 230.90,  tpot: 20.45},
@@ -147,7 +147,7 @@ const MODELS = {
               "Replies in the smoke test began with a stray <code>&lt;/think&gt;</code> token; the cause was not investigated (the GLM preset's reasoning parser removes the equivalent on that model)."]
   },
   glm53: {
-    label: "GLM-5.3-Flash",
+    label: "GLM-5.3-Flash", hw: "2 Isambard-AI nodes, 8 &times; GH200", rate: 8,
     sub: `<code>zai-org/GLM-5.3-Flash</code>: MoE with 288 routed experts, 1M-token context, FP8, 328 GB. Run with <code>--enforce-eager</code> (CUDA graphs hang on this layout), so these numbers are a floor, not the best this hardware can do.`,
     bench: [
       {c: 1,  req: 4,   tps: 6.85,   ttft: 3748.91, tpot: 131.86},
@@ -161,6 +161,39 @@ const MODELS = {
               "Short prompts only. Nothing here measures a 250k-token prompt.",
               "One working run, no repeats, so no error bars.",
               "The serve job took about 15 minutes (14.6): about 4 minutes to start, then about 9 minutes of benchmarks, which are slow in eager mode."]
+  },
+  qwen38: {
+    label: "Qwen3.8-27B", hw: "1 GPU (1 &times; GH200)", rate: 1,
+    sub: `<code>Qwen/Qwen3.8-27B</code>: dense 27B, bf16, 55.6 GB, 262k context. Fits on a single GPU (51 GiB of weights).`,
+    bench: [
+      {c: 1,  req: 4,   tps: 57.31,   ttft: 126.70,  tpot: 17.02},
+      {c: 16, req: 64,  tps: 642.32,  ttft: 1212.61, tpot: 20.22},
+      {c: 64, req: 256, tps: 1398.83, ttft: 2196.99, tpot: 37.22}],
+    tiles: [["Single user, output speed", "57 tok/s", "time to first token 127 ms"],
+            ["Aggregate at 64 concurrent users", "1,399 tok/s", "on one GPU; each user sees ~27 tok/s"],
+            ["Concurrent 262k-token contexts held", "1.9\u00d7", "508k-token KV cache on the one GPU"]],
+    cost: [{s: "1. Download weights (one-off)", h: 0.03}, {s: "2. Build container (shared)", h: 0.29}, {s: "3. Serve + benchmark, 1 GPU", h: 0.07}],
+    caveats: ["Short prompts only. Nothing here measures a 250k-token prompt. With only 1.9 full-length contexts of KV cache, long-context use on one GPU is limited.",
+              "One working run, no repeats, so no error bars.",
+              "Scaling: 4 replicas on 4 GPUs (4 times the cost) reached 57 / 818 / 2,448 tok/s at 1 / 16 / 64 users, 1.75&times; the one-GPU aggregate at 64 users.",
+              "The preset uses the vLLM recipe's tool-call and reasoning parsers; the smoke-test reply was clean."]
+  },
+  flint: {
+    label: "Flint 40B-A2.5B", hw: "2 GPUs (2 &times; GH200)", rate: 2,
+    sub: `<code>RecursiveSI/flint</code>: 39.8B MoE with ~2.5B active parameters, 256 experts, bf16, 79.6 GB, 262k context. This is the unquantised base of <code>OsaurusAI/Flint-40B-A2.5B-JANGH2</code>; that checkpoint is an Apple-Silicon (MLX) format that vLLM cannot load.`,
+    bench: [
+      {c: 1,  req: 4,   tps: 196.32,  ttft: 74.22,  tpot: 4.82},
+      {c: 16, req: 64,  tps: 1721.47, ttft: 232.51, tpot: 8.40},
+      {c: 64, req: 256, tps: 3985.52, ttft: 530.92, tpot: 14.00}],
+    tiles: [["Single user, output speed", "196 tok/s", "time to first token 74 ms"],
+            ["Aggregate at 64 concurrent users", "3,986 tok/s", "on two GPUs; each user sees ~71 tok/s"],
+            ["Concurrent 262k-token contexts held", "11.2\u00d7", "2.9M-token KV cache across the two GPUs"]],
+    cost: [{s: "1. Download weights (one-off)", h: 0.03}, {s: "2. Build container (shared)", h: 0.29}, {s: "3. Serve + benchmark, 2 GPUs", h: 0.08}],
+    caveats: ["This is the BF16 base model, not the JANGH2 2-bit checkpoint. Quality and speed of that quantised file on Apple hardware are not measured here.",
+              "Short prompts only. Nothing here measures a 250k-token prompt.",
+              "One working run, no repeats, so no error bars.",
+              "Doubling to 4 GPUs (2 replicas) reached 150 / 1,720 / 4,622 tok/s: 16% more at 64 users for twice the GPUs, and slower for a single user.",
+              "The preset sets no reasoning or tool parser, so the smoke-test reply contains the model's thinking inline."]
   }
 };
 let current = new URLSearchParams(location.search).get("model");
@@ -214,11 +247,11 @@ function columns(target, data, valueKey, unit, tipFn, decimals) {
 function render() {
   const M = MODELS[current]; bench = M.bench; cost = M.cost;
   document.title = M.label + " on Isambard-AI";
-  document.getElementById("sub").innerHTML = M.sub + ` On <strong>2 Isambard-AI nodes, 8 &times; GH200</strong>, vLLM 0.33.0, 15 November 2026. <a href="https://github.com/wd7512/how-to-run-llm-on-isambard/blob/main/HOWTO.md">Exact steps &rarr;</a>`;
+  document.getElementById("sub").innerHTML = M.sub + ` On <strong>${M.hw}</strong>, vLLM 0.33.0, 15 November 2026. <a href="https://github.com/wd7512/how-to-run-llm-on-isambard/blob/main/HOWTO.md">Exact steps &rarr;</a>`;
   document.getElementById("tiles").innerHTML = M.tiles.map(t => `<div class="tile"><div class="label">${t[0]}</div><div class="value">${t[1]}</div><p class="note">${t[2]}</p></div>`).join("");
   const tot = cost.reduce((a, d) => a + d.h, 0);
   document.getElementById("cost-h").textContent = `What it costs you: about ${fmt(tot, 1)} GPU-hours to get running`;
-  document.getElementById("cost-d").textContent = `GPU-hours for the three jobs in the guide, from Slurm accounting (1 node = 4 GPUs, so ${fmt(tot, 1)} GPU-hours = ${fmt(tot / 4, 1)} node-hours). The download is one-off per model and the container is shared. Serving on 2 nodes costs 8 GPU-hours per hour the job runs.`;
+  document.getElementById("cost-d").textContent = `GPU-hours for the three jobs in the guide, from Slurm accounting (1 GPU = 0.25 node-hours, so ${fmt(tot, 1)} GPU-hours = ${fmt(tot / 4, 1)} node-hours). Isambard charges per GPU, so fewer GPUs cost less. The download is one-off per model and the container is shared. Serving this model costs ${M.rate} GPU-hour${M.rate > 1 ? "s" : ""} per hour the job runs.`;
   document.getElementById("caveats").innerHTML = M.caveats.map(c => `<li>${c}</li>`).join("");
   ["c-throughput", "c-peruser", "c-cost"].forEach(id => document.getElementById(id).innerHTML = "");
   document.getElementById("switch").innerHTML = Object.keys(MODELS).map(k => `<button role="tab" data-k="${k}" aria-selected="${k === current}">${MODELS[k].label}</button>`).join("");
@@ -236,9 +269,9 @@ document.getElementById("t-bench").innerHTML =
 // Horizontal bars: cost per job; value at the tip.
 function costChart() {
   const W = 640, rowH = 30, L = 232, R = 76, T = 6, H = T + rowH * cost.length + 8;
-  const max = Math.ceil(Math.max(...cost.map(d => d.h)) * 1.15 * 2) / 2, svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "GPU-hours per job"});
+  const max = Math.max(0.5, Math.ceil(Math.max(...cost.map(d => d.h)) * 1.15 * 2) / 2), svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "GPU-hours per job"});
   const x = v => L + (W - L - R) * v / max;
-  [0, 1, 2].filter(v => v <= max).forEach(v => {
+  (max <= 1 ? [0, 0.25, 0.5] : [0, 1, 2]).filter(v => v <= max).forEach(v => {
     el("line", {class: "grid", x1: x(v), x2: x(v), y1: T, y2: H - 8}, svg);
   });
   cost.forEach((d, i) => {

@@ -1,23 +1,23 @@
 # Running a large LLM on Isambard-AI (2 nodes, vLLM)
 
-Step-by-step, with the scripts in [`scripts/`](scripts/). Pick a model with `MODEL=dsv41` (default) or
-`MODEL=glm53`; measured results are on the [stats page](https://wd7512.github.io/how-to-run-llm-on-isambard/).
+Step-by-step, with the scripts in [`scripts/`](scripts/). Pick a model with `MODEL=dsv41` (default),
+`glm53`, `qwen38` or `flint`; measured results are on the [stats page](https://wd7512.github.io/how-to-run-llm-on-isambard/).
 
-> **Status.** `glm53` was run end to end from a fresh clone. For `dsv41` the numbers come from the
+> **Status.** `glm53`, `qwen38` and `flint` were run from a fresh clone. For `dsv41` the numbers come from the
 > original absolute-path scripts; the current model-switch version has not been re-run for it.
 
 ## What you get
 
-| | `dsv41` | `glm53` |
-|---|---|---|
-| Model | DeepSeek-V4.1-Flash-1017, 552B MoE | GLM-5.3-Flash, MoE, 288 experts |
-| Weights | 510 GB, FP8 + FP4 | 328 GB, FP8 |
-| Layout | TP 4 x DP 2 + expert-parallel on 2 nodes (8 x GH200) | same, plus `--enforce-eager` |
-| Output tok/s, 1 / 16 / 64 users | 47 / 491 / 1,422 | 6.9 / 92 / 365 |
-| GPU-hours to reproduce | ~1.5 | ~2.3 |
+| `MODEL=` | Model | Weights | GPUs | Layout | Output tok/s, 1 / 16 / 64 users | GPU-hours to reproduce |
+|---|---|---:|---:|---|---|---:|
+| `dsv41` | DeepSeek-V4.1-Flash-1017, 552B MoE | 510 GB | 8 | TP4 x DP2 + EP | 47 / 491 / 1,422 | ~1.5 |
+| `glm53` | GLM-5.3-Flash, MoE | 328 GB | 8 | same, `--enforce-eager` | 6.9 / 92 / 365 | ~2.3 |
+| `qwen38` | Qwen3.8-27B, dense | 55.6 GB | 1 | one replica | 57 / 642 / 1,399 | ~0.4 |
+| `flint` | Flint 40B-A2.5B (BF16), MoE | 79.6 GB | 2 | TP2 + EP | 196 / 1,721 / 3,986 | ~0.4 |
 
-Software: vLLM 0.33.0, torch 2.14, CUDA 13.0, Apptainer, driver 580.178.04. After setup, serving on 2
-nodes costs 8 GPU-hours per hour the job runs.
+Software: vLLM 0.33.0, torch 2.14, CUDA 13.0, Apptainer, driver 580.178.04. Isambard-AI charges per GPU
+(1 GPU = 0.25 node-hours per hour), so each model requests only the GPUs it needs. After setup, serving
+costs `GPUS` GPU-hours per hour the job runs (8 for the two big models, 1 for `qwen38`, 2 for `flint`).
 
 ## Prerequisites
 
@@ -70,10 +70,10 @@ Glm5NextForConditionalGeneration supported: True
 Notes: Isambard-AI is aarch64, so only `linux/arm64` images work. The log is full of
 `xattr ... ENOTSUP` warnings from Lustre; they are harmless. Build in a job, not on the login node.
 
-### 3. Serve and benchmark on 2 nodes (8-15 minutes, 8 GPUs)
+### 3. Serve and benchmark (2-15 minutes)
 
 ```bash
-sbatch scripts/03_serve_2node.sbatch
+bash scripts/03_serve.sh          # requests the nodes and GPUs from the model file
 tail -f logs/serve-2node_<jobid>.out
 ```
 
@@ -97,8 +97,9 @@ of the first node (`$HEAD_NODE`); tunnel to it with `ssh -L`.
 
 ## Why this configuration
 
-- **2 nodes are the minimum.** Weights are 510 GB; one node has ~384 GB of HBM.
-- **DP 2 x TP 4 + expert parallel**, not pipeline parallel. The model's own code guards for
+- **Big models need 2 nodes.** `dsv41` weights are 510 GB and `glm53` 328 GB; one node has ~384 GB of HBM.
+  `qwen38` (55.6 GB) fits on 1 GPU and `flint` (79.6 GB) on 2, so they request only that many.
+- **DP 2 x TP 4 + expert parallel** for the 2-node models, not pipeline parallel. The model's own code guards for
   exactly this multi-node layout (pipeline size 1, expert parallel on, TP > 1, DP > 1).
   MoE experts are sharded across all 8 GPUs, attention weights are replicated per node,
   and the per-layer tensor-parallel all-reduce stays inside one node rather than crossing the network.
@@ -145,6 +146,13 @@ The scripts already include these fixes. If you change the setup, these are the 
    No progress for 22 minutes, so the run was cancelled. -> `--enforce-eager` (in `glm53.env`). It works
    but decode is about 7x slower than `dsv41`. Open item: find a graph mode that does not hang, or try
    TP 8 across both nodes as the vLLM recipe does on one 8-GPU node.
+
+10. **`AssertionError: Flint requires FlashInfer attention`** (`flint`). vLLM picks the FLASH_ATTN backend
+    by default; the model code needs FlashInfer. -> `--attention-backend FLASHINFER` (in `flint.env`).
+11. **`assert d % bd == 0` in `flint/ops/norm.py` `silu_and_mul`** (`flint`, TP=4). The dense MLP kernel
+    needs (6144 / TP) to be a multiple of 1024. -> use TP 1, 2 or 8; the preset uses TP 2.
+12. **`OsaurusAI/Flint-40B-A2.5B-JANGH2` will not load.** It is an MLX (Apple Silicon) checkpoint with a
+    custom JANGH quantisation. -> serve the BF16 base, `RecursiveSI/flint` (the `flint` preset).
 
 Tip: when something fails, the useful error is rarely at the bottom of the log. Search
 `vllm_serve_<jobid>.log` and `vllm_worker_<jobid>.log` for the first `ERROR`, not the last.

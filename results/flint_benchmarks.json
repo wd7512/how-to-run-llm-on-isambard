@@ -1,0 +1,81 @@
+{
+  "model": "RecursiveSI/flint (BF16 base of OsaurusAI/Flint-40B-A2.5B-JANGH2)",
+  "preset": "flint",
+  "date": "2026-11-15",
+  "system": "Isambard-AI Phase 2, 2 x GH200 (96 GiB HBM each)",
+  "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "driver": "580.178.04"
+  },
+  "layout": "2 GPUs, TP2 + expert-parallel, --attention-backend FLASHINFER",
+  "mode": "CUDA graphs on",
+  "workload": {
+    "dataset": "vllm bench serve --dataset-name random",
+    "input_tokens": 1024,
+    "output_tokens": 256,
+    "prompts_per_level": "4 x concurrency"
+  },
+  "load": {
+    "weights_gib_per_gpu": 37.2,
+    "load_seconds": 15,
+    "kv_cache_tokens": 2925020,
+    "max_concurrency_at_262144_ctx": 11.16
+  },
+  "results": [
+    {
+      "concurrency": 1,
+      "requests": 4,
+      "failed": 0,
+      "output_tok_s": 196.32,
+      "mean_ttft_ms": 74.22,
+      "mean_tpot_ms": 4.82
+    },
+    {
+      "concurrency": 16,
+      "requests": 64,
+      "failed": 0,
+      "output_tok_s": 1721.47,
+      "mean_ttft_ms": 232.51,
+      "mean_tpot_ms": 8.4
+    },
+    {
+      "concurrency": 64,
+      "requests": 256,
+      "failed": 0,
+      "output_tok_s": 3985.52,
+      "mean_ttft_ms": 530.92,
+      "mean_tpot_ms": 14.0
+    }
+  ],
+  "also_measured_4_gpus": {
+    "layout": "4 GPUs, 2 replicas of TP2 (DP2 + EP)",
+    "results": [
+      {
+        "concurrency": 1,
+        "requests": 4,
+        "failed": 0,
+        "output_tok_s": 149.85,
+        "mean_ttft_ms": 231.48,
+        "mean_tpot_ms": 5.79
+      },
+      {
+        "concurrency": 16,
+        "requests": 64,
+        "failed": 0,
+        "output_tok_s": 1719.61,
+        "mean_ttft_ms": 368.62,
+        "mean_tpot_ms": 7.88
+      },
+      {
+        "concurrency": 64,
+        "requests": 256,
+        "failed": 0,
+        "output_tok_s": 4621.66,
+        "mean_ttft_ms": 393.42,
+        "mean_tpot_ms": 12.33
+      }
+    ]
+  }
+}
