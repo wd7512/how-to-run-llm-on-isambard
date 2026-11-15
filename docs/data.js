@@ -103,6 +103,9 @@ window.SITE = {
    "provenance": {},
    "gph1m": 1.506,
    "vllm_args": "--trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 1475.14,
    "tok1": 47.8
   },
@@ -201,6 +204,9 @@ window.SITE = {
    },
    "gph1m": 6.096,
    "vllm_args": "--tool-call-parser glm47 --enable-auto-tool-choice --reasoning-parser glm47 --disable-flashinfer-autotune --enforce-eager",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 364.55,
    "tok1": 6.85
   },
@@ -305,6 +311,9 @@ window.SITE = {
    "provenance": {},
    "gph1m": 0.197,
    "vllm_args": "--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 --mm-encoder-tp-mode data",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 1413.15,
    "tok1": 57.32
   },
@@ -403,6 +412,9 @@ window.SITE = {
    },
    "gph1m": 0.139,
    "vllm_args": "--attention-backend FLASHINFER",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 3985.52,
    "tok1": 196.32
   },
@@ -500,6 +512,9 @@ window.SITE = {
    },
    "gph1m": 0.467,
    "vllm_args": "--trust-remote-code --generation-config vllm --tool-call-parser mimo --enable-auto-tool-choice --reasoning-parser mimo",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 2379.63,
    "tok1": 230.21
   },
@@ -597,6 +612,9 @@ window.SITE = {
    },
    "gph1m": 0.418,
    "vllm_args": "--max-num-seqs 256 --enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 2660.23,
    "tok1": 156.01
   },
@@ -702,6 +720,9 @@ window.SITE = {
    "provenance": {},
    "gph1m": 0.337,
    "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 1646.55,
    "tok1": 80.2
   },
@@ -806,6 +827,9 @@ window.SITE = {
    "provenance": {},
    "gph1m": 0.103,
    "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 2702.8,
    "tok1": 207.99
   },
@@ -909,6 +933,9 @@ window.SITE = {
    "provenance": {},
    "gph1m": 0.103,
    "vllm_args": "--enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --trust-remote-code",
+   "serve_command": null,
+   "worker_command": null,
+   "env": {},
    "tok64": 2687.0,
    "tok1": 217.51
   }

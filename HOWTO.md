@@ -1,41 +1,121 @@
-# Running a large LLM on Isambard-AI with vLLM
+# A guide to running large LLMs on Isambard-AI
 
-One command per model; this page explains what it does, how to add a model, and what breaks. Measured results are on the
-[stats site](https://wd7512.github.io/how-to-run-llm-on-isambard/). Model names (`MODEL=`) are listed below.
+How to serve a large open-weight LLM on Isambard-AI (NVIDIA GH200) with vLLM, what throughput to expect, and what node
+setup each model needs. Everything here was done and measured on the machine; the scripts in this repo are a **worked
+example** of the steps, not a tool you have to use. Results for each model are on the
+[stats site](https://wd7512.github.io/how-to-run-llm-on-isambard/).
 
-## Prerequisites
+## 1. What Isambard-AI looks like
 
-- An Isambard-AI Phase 2 account and project, and an SSH certificate from `clifton auth`.
-- Free space in `$SCRATCHDIR` for the weights (the default quota is 5 TiB). Weights range from 52 GB to 510 GB per model.
-- GPU allocation: see "GPU-hours to reproduce" per model below (0.2 to 2.3 GPU-hours, plus ~0.3 once for the container).
+These are the facts that shape everything below.
 
-## The short path
+- **Hardware.** Phase 2 nodes have 4 NVIDIA GH200 superchips. Each has a 96 GiB GPU, 72 Arm cores and 115 GiB of RAM. The
+  CPUs are **aarch64**, so only `linux/arm64` container images work. Driver 580 runs CUDA 13 images.
+- **Slurm, one GPU partition.** There is no CPU-only partition, so even a download job asks for a GPU. **Billing is per GPU**
+  (1 GPU = 0.25 node-hours per hour), so request only the GPUs you need.
+- **Login nodes are tiny** (about 1 core and 4 GiB). Heavy processes are killed (exit 137) and background processes are
+  reaped when your SSH session ends. Do all real work inside Slurm jobs.
+- **Storage.** `$SCRATCHDIR` (Lustre, 5 TiB by default, not backed up) holds weights and containers. Node-local `/local` is
+  RAM-backed and gone when the job ends; use it for caches that many processes write at once.
+- **Containers** use Apptainer: `apptainer build image.sif docker://...`. For multi-node jobs load
+  `brics/nccl` and `brics/apptainer-multi-node` and source `/host/adapt.sh` inside the container for the Slingshot network.
+
+## 2. The recipe, by hand
+
+Four steps. The commands are shortened; the scripts have the full versions.
+
+**1. Download the weights, in a job.** One GPU, because there is no CPU partition. About 1 GB/s.
 
 ```bash
-ssh <project>.aip2.isambard
-git clone https://github.com/wd7512/how-to-run-llm-on-isambard.git && cd how-to-run-llm-on-isambard
-MODEL=qwen38 bash scripts/run.sh                  # everything, chained with Slurm dependencies
-MODEL=qwen38 python3 scripts/collect_results.py   # after the serve job finishes
-python3 scripts/build_site.py                     # (optional) regenerate docs/data.js and the tables from results/
+#SBATCH --gpus=1 --time=01:00:00
+module load cray-python/3.11.7        # the login-node Python is 3.6
+python3 -m venv $SCRATCHDIR/envs/hf && $SCRATCHDIR/envs/hf/bin/pip install huggingface_hub
+$SCRATCHDIR/envs/hf/bin/hf download <repo> --revision <commit-sha> --local-dir $SCRATCHDIR/models/<name>
 ```
 
-Keep submitting from the repo root: `logs/` is relative to it. Watch with `squeue -u $USER` and
-`tail -f logs/serve-<model>_<jobid>.out`.
+**2. Build the container, in a job.** The image needs more than the login node's 4 GiB. Pin it by digest, not by tag; tags move.
 
-## What `run.sh` does
+```bash
+#SBATCH --gpus=1 --time=01:00:00
+export APPTAINER_CACHEDIR=$SCRATCHDIR/tmp/cache APPTAINER_TMPDIR=$SCRATCHDIR/tmp
+apptainer build $SCRATCHDIR/containers/vllm.sif docker://vllm/vllm-openai@sha256:<arm64 digest>
+```
 
-| Step | Script | Where | Cost |
-|---|---|---|---|
-| 0 | `00_setup_login_node.sh` | login node | a Python venv with the Hugging Face CLI. **Never download weights on the login node** (see troubleshooting 1). |
-| 1 | `01_download.sbatch` | 1 GPU | downloads the pinned revision at ~1 GB/s, then writes `.revision` so it is skipped next time. |
-| 2 | `02_build_container.sbatch` | 1 GPU | pulls the pinned arm64 vLLM image (~11 GB) into a 9.4 GB `.sif`; skipped if it exists. Checks vLLM knows the model's architecture. |
-| 3 | `03_serve.sbatch` via `03_serve.sh` | model's nodes x GPUs | starts vLLM, runs a smoke test, then the benchmark at 1, 16 and 64 concurrent users, and exits. |
+**3. Serve.** Request the nodes and GPUs the model needs, then run vLLM inside the container once per node.
 
-`03_serve.sh` reads the model's file (`scripts/models/<name>.env`): `NODES`, `GPUS` per node, `TIME_LIMIT`, layout
-(`TP`, `DP_PER_NODE`, `EP`) and vLLM flags. The Slurm time limit is a hard cap, so a hung job cannot burn more than the
-cap. When the head node finishes, it writes `logs/run_<jobid>/DONE` and the other nodes exit too.
+```bash
+#SBATCH --nodes=<N> --gpus-per-node=<G> --ntasks-per-node=1 --time=<cap>
+module load brics/nccl brics/apptainer-multi-node
+srun --kill-on-bad-exit=1 --export=ALL \
+  apptainer exec --nv --bind $SCRATCHDIR vllm.sif  node_entry.sh     # runs `vllm serve ...` (flags in section 4)
+```
 
-## Models
+On one node, `vllm serve <model> --tensor-parallel-size <G>` is enough. Across nodes, vLLM's built-in multi-node
+data-parallel mode: node 0 runs `vllm serve ... --data-parallel-size <N> --data-parallel-size-local 1
+--data-parallel-address <node 0> --data-parallel-rpc-port 13345`, and every other node runs the same command with
+`--headless --data-parallel-start-rank <rank>`. (The image has no Ray.) Set the environment variables in section 4 first.
+
+**4. Benchmark.** `vllm bench serve` against `localhost:8000`; the exact command is in section 8.
+
+## 3. Choosing a node setup
+
+- **Fit the weights.** A GPU has 96 GiB and vLLM uses 90% of it by default. Weights per GPU = weights / the number of GPUs
+  they are split across. Leave room for the KV cache: vLLM prints `GPU KV cache size: N tokens` and
+  `Maximum concurrency for 262,144 tokens per request: Nx` at start-up, and refuses to start if a single full-length
+  context does not fit (Gemma 4 31B on one GPU: it needs 33.3 GiB of KV and only 24.5 GiB is free).
+- **Tensor-parallel (`TP`) inside a node** splits each layer across GPUs; the size must divide the model's head and
+  intermediate dimensions (Flint's dense MLP needs TP 1, 2 or 8). **Expert-parallel (`EP`)** spreads a mixture-of-experts
+  model's experts across GPUs and is what makes the big MoE models fit.
+- **Across nodes use data-parallel plus expert-parallel**, with tensor-parallel kept inside each node so the per-layer
+  all-reduce never crosses the network. Pipeline-parallel across nodes failed in vLLM 0.33 for DeepSeek.
+- **Use the fewest GPUs that fit.** Billing is per GPU, so a model that fits on 1 GPU costs a quarter of a node. More GPUs
+  raise throughput but not in proportion (measured: Qwen3.8-27B on 4 GPUs gave 1.75x the throughput of 1 GPU at 64 users;
+  Flint on 4 GPUs gave 1.16x that of 2 GPUs).
+
+What fit where (measured):
+
+<!-- BEGIN:fit-table -->
+| GPUs | Nodes | Model | Weights per GPU | Concurrent 262k contexts held | Layout |
+|---:|---:|---|---:|---:|---|
+| 1 | 1 | [Gemma 4 26B-A4B](#gemma26b) | 49 GiB | 4.2 | TP1 x DP1, 1 node(s) |
+| 1 | 1 | [Ornith-1.0-35B](#ornith35b) | 65 GiB | 3.4 | TP1 x DP1, 1 node(s) |
+| 1 | 1 | [Qwen3.8-27B](#qwen38) | 51 GiB | 2.0 | TP1 x DP1, 1 node(s) |
+| 2 | 1 | [Flint 40B-A2.5B](#flint) | 37 GiB | 11.2 | 2 GPUs, TP2 + expert-parallel, --attention-backend FLASHINFER |
+| 2 | 1 | [Gemma 4 31B](#gemma31b) | 30 GiB | 3.2 | TP2 x DP1, 1 node(s) |
+| 4 | 1 | [Qwen3.8-Flash-Next](#qwen38flash) | 61 GiB | 6.4 | tensor-parallel 4 + expert-parallel, 1 node, n-gram embedding offloaded to host RAM |
+| 4 | 1 | [MiMo-V2.6-Flash](#mimo26) | 42 GiB | 16.5 | tensor-parallel 4, 1 node |
+| 8 | 2 | [DeepSeek-V4.1-Flash](#dsv41) | 39 GiB | 48.5 | TP4 x DP2 + expert-parallel, 2 node(s) |
+| 8 | 2 | [GLM-5.3-Flash](#glm53) | 42 GiB | 13.2 | tensor-parallel 4 x data-parallel 2 + expert-parallel, --enforce-eager (no CUDA graphs) |
+<!-- END:fit-table -->
+
+## 4. What the vLLM flags mean
+
+| Flag | What it does and why |
+|---|---|
+| `--tensor-parallel-size N` | Split every layer across N GPUs in a node. |
+| `--data-parallel-size N`, `--data-parallel-size-local` | N full copies of the attention part across nodes; `-local` is how many run on this node. |
+| `--data-parallel-address`, `--data-parallel-rpc-port` | Where the data-parallel replicas find node 0. |
+| `--headless`, `--data-parallel-start-rank` | A worker node: no API server, and which data-parallel rank(s) it hosts. |
+| `--enable-expert-parallel` | Shard the MoE experts across all GPUs instead of replicating them. |
+| `--max-model-len` | Longest context to support; we use 262,144 (250k was the target). Sets the KV cache a single request needs. |
+| `--max-num-seqs` | Most requests batched at once (default here 64). |
+| `--gpu-memory-utilization 0.90` | Fraction of each GPU vLLM may use. |
+| `--enforce-eager` | No CUDA graphs. Slower decode; used for GLM-5.3 where graph capture hung. |
+| `--attention-backend` | Force an attention kernel (Flint requires FlashInfer). |
+| `--reasoning-parser`, `--tool-call-parser`, `--enable-auto-tool-choice` | Split thinking from the answer, and parse tool calls, in the model's own format. |
+| `--enable-prefix-caching` | Reuse KV cache across requests that share a prefix. |
+| `--trust-remote-code`, `--served-model-name` | Allow the model's custom code; the name clients use. |
+
+Environment variables set inside the container (all in `node_entry.sh`):
+
+| Variable | Why |
+|---|---|
+| `TRITON_LIBCUDA_PATH=/.singularity.d/libs` | Triton's JIT compiler otherwise finds a host linker script instead of libcuda and fails to link. |
+| `DG_JIT_CACHE_DIR`, `TRITON_CACHE_DIR`, `VLLM_CACHE_ROOT`, `TORCHINDUCTOR_CACHE_DIR`, `XDG_CACHE_HOME` -> node-local `/local` | Several ranks write the same kernel cache; on shared Lustre they race (`missing CUDA CUBIN`, `Stale file handle`). |
+| `VLLM_ENGINE_READY_TIMEOUT_S=3600` | Some models JIT-compile kernels on first start; the default 600 s gives up too soon. |
+| `HF_HUB_OFFLINE=1` | Use the weights already on scratch. |
+
+## 5. Results
 
 <!-- BEGIN:models-table -->
 | `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours per 1M output tokens | GPU-hours to reproduce | Status |
@@ -51,7 +131,10 @@ cap. When the head node finishes, it writes `logs/run_<jobid>/DONE` and the othe
 | `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 218 / 2,687 | 0.10 | ~0.37 | worked |
 <!-- END:models-table -->
 
-## Per-model notes and exact commands
+**GPU-hours per 1M output tokens** is the comparable cost (section 8). Every model below has its own notes and the
+command that was run.
+
+## 6. Per-model notes and commands
 
 <!-- BEGIN:model-sections -->
 ### dsv41
@@ -193,75 +276,63 @@ Measured: 217.5 output tok/s for one user, 2,687 at 64 users; **0.10 GPU-hours p
 
 <!-- END:model-sections -->
 
-## Why this configuration
+## 7. The worked example: this repo's scripts
 
-- **Big models need 2 nodes.** A node has ~384 GiB of HBM. Layout: tensor-parallel 4 per node x data-parallel across nodes +
-  expert parallel. MoE experts are sharded across all GPUs, attention weights are replicated per node, and the per-layer
-  all-reduce stays inside one node rather than crossing the network. Pipeline parallel across nodes fails in vLLM 0.33.
-- **Small models request only what they need.** Isambard charges per GPU, so a 1-GPU model costs a quarter of a node.
-- **`--max-model-len 262144`** because 250k context was the target. The KV cache for most models holds several such
-  sequences at once; the per-model figure is on the stats site.
-- **Isambard-AI is aarch64**, so only `linux/arm64` images work. The cluster driver (580.178.04) is new enough for CUDA 13
-  images; on an older driver use a CUDA 12 image tag.
+You can follow section 2 by hand. The repo wraps it so a run is repeatable and its results are recorded:
 
-## Troubleshooting
+```bash
+git clone https://github.com/wd7512/how-to-run-llm-on-isambard.git && cd how-to-run-llm-on-isambard
+MODEL=qwen38 bash scripts/run.sh                  # download -> build container -> serve + benchmark, chained
+MODEL=qwen38 python3 scripts/collect_results.py   # writes results/qwen38_benchmarks.json from the saved run
+python3 scripts/build_site.py                     # regenerates docs/data.js and the tables from results/
+```
 
-Symptom -> cause -> fix. The scripts already include these fixes; if you change the setup, these are the errors to expect.
-Model-specific problems are in the per-model notes above.
+| Script | Does |
+|---|---|
+| `00_setup_login_node.sh`, `01_download.sbatch` | step 1: venv, then the pinned-revision download job (skipped if already done) |
+| `02_build_container.sbatch` | step 2: the pinned image, plus a check that vLLM knows the model's architecture |
+| `03_serve.sh`, `03_serve.sbatch`, `node_entry.sh` | step 3 and 4: nodes, GPUs and time cap from the model's file; sets the environment; starts vLLM; smoke test; benchmark; signals the other nodes to stop |
+| `scripts/models/<name>.env` | one small file per model: repo, pinned commit, nodes, GPUs, layout, vLLM flags |
 
-1. **Download dies with exit 137 about 20 seconds in.** The login node allows about 1 core and 4 GiB; the OOM killer ends big
-   transfers. Background processes there are also reaped when your SSH session ends. -> Download in a Slurm job.
-2. **`ray: command not found` / "ray GPUs: 0".** The vLLM image does not contain Ray. -> Use vLLM's built-in multi-node mode
-   (`--data-parallel-*`, `--headless`).
-3. **`/usr/bin/ld: cannot find -l:libcuda.so.1`** during the first forward pass, from Triton compiling `cuda_utils`. Triton
-   finds libcuda via `ldconfig`, which inside the container resolves to a host directory holding a glibc linker script.
-   -> `export TRITON_LIBCUDA_PATH=/.singularity.d/libs`.
-4. **`AssertionError` at `assert residual is not None and post_mix is not None`** with `--pipeline-parallel-size 2` (DeepSeek).
-   -> Use data-parallel + expert-parallel instead.
-5. **`RuntimeError: ... missing CUDA CUBIN: ~/.cache/vllm/deep_gemm/...`.** Eight ranks compile and read the same kernel cache
-   on shared Lustre. -> `DG_JIT_CACHE_DIR` on node-local `/local`.
-6. **`OSError: [Errno 116] Stale file handle`** from Triton's cache, same class of race. -> `TRITON_CACHE_DIR`,
-   `VLLM_CACHE_ROOT`, `TORCHINDUCTOR_CACHE_DIR`, `XDG_CACHE_HOME` all on `/local`. `node_entry.sh` sets all five.
-7. **A crashed server keeps burning allocation.** A script that waits for `/health` forever holds the nodes after the server
-   died. -> the wait loop checks `kill -0`, `srun --kill-on-bad-exit=1` tears the job down, and `TIME_LIMIT` caps it.
-8. **`TimeoutError: Timed out waiting for engine core processes to start ... 600s`** after the weights loaded. Some models
-   JIT-compile kernels on first use. -> `VLLM_ENGINE_READY_TIMEOUT_S=3600` (set in `node_entry.sh`).
+Everything that affects a result is pinned or recorded: the image by digest (vLLM 0.33.0, torch 2.14, CUDA 13.0), each model by
+Hugging Face commit, the benchmark by seed and token lengths, and each run saves its own metadata, effective command and measured
+token counts under `logs/run_<jobid>/`. The serve job has a hard time cap so a hang cannot burn more than the cap.
 
-Tip: the useful error is rarely at the bottom of the log. Search `logs/vllm_serve_<jobid>.log` and
-`logs/vllm_worker_<jobid>.log` for the first `ERROR`, not the last.
+**Adding a model:** copy a file in `scripts/models/`, set the repo, `MODEL_REVISION`, `ARCH` (from the model's `config.json`),
+`NODES`, `GPUS`, `TP`, `DP_PER_NODE`, `EP`, `TIME_LIMIT` and the flags from the model's vLLM recipe; add its description and
+notes to `site_src/models.json`; then run the three commands above.
 
-## Reproducing the benchmark and the cost metric
-
-`node_entry.sh` runs this after the smoke test, for C = 1, 16 and 64:
+## 8. Reproducing the benchmark and the cost metric
 
 ```bash
 vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 \
   --dataset-name random --random-input-len 1024 --random-output-len 256 --seed 0 \
-  --num-prompts $((4*C)) --max-concurrency $C --save-result --result-dir logs/run_<jobid> --result-filename c$C.json
+  --num-prompts $((4*C)) --max-concurrency $C --save-result --result-dir <dir> --result-filename c$C.json     # C = 1, 16, 64
 ```
 
 - **Input tokens:** 1,024 per request, random tokens (so no prompt-cache hits). **Output tokens:** 256 per request. That is
   4 input tokens for every output token, so each output token carries 4 tokens of prefill.
 - **The 64-user run** is 256 requests: 262,144 input and 65,536 output tokens (the saved JSON records the measured counts).
-- **GPU-hours per 1M output tokens** = `GPUs / output_tok_s / 3600 * 1e6`, using that run. Change the input or output length
-  and the metric changes with it, so quote the token counts whenever you quote the number.
+- **GPU-hours per 1M output tokens** = `GPUs / output_tok_s / 3600 * 1e6`, using that run. Change the input or output length and
+  the metric changes with it, so quote the token counts whenever you quote the number.
 - **GPU-hours** come from Slurm: `sacct -X -P -j <ids> -o JobID,ElapsedRaw,AllocTRES` (GPUs x elapsed seconds / 3600).
 
-## Adding a model
+## 9. Troubleshooting
 
-1. Copy a file in `scripts/models/` and set the repo, `MODEL_REVISION` (the commit to pin), served name, `ARCH` (the
-   architecture class from the model's `config.json`; step 2 checks vLLM supports it), `NODES`, `GPUS`, `TP`,
-   `DP_PER_NODE`, `EP`, `TIME_LIMIT` and `VLLM_EXTRA_ARGS` (take the flags from the model's vLLM recipe).
-2. Add its description and notes to `site_src/models.json`.
-3. `MODEL=<name> bash scripts/run.sh`, then `collect_results.py` and `build_site.py`.
+Symptom -> cause -> fix. The scripts already include these fixes. Model-specific problems are in section 6.
 
-Sizing: weights (GiB) / GPUs per replica must leave room for KV cache in 96 GiB; check `TP` divides the model's head and
-intermediate sizes.
+1. **Download dies with exit 137 about 20 seconds in.** The login node's 4 GiB; the OOM killer ends big transfers. -> Download in a Slurm job.
+2. **`ray: command not found` / "ray GPUs: 0".** The vLLM image has no Ray. -> vLLM's built-in multi-node mode (section 2).
+3. **`/usr/bin/ld: cannot find -l:libcuda.so.1`** at the first forward pass (Triton compiling `cuda_utils`). -> `TRITON_LIBCUDA_PATH` (section 4).
+4. **`AssertionError ... residual is not None and post_mix is not None`** with `--pipeline-parallel-size 2` (DeepSeek). -> data-parallel + expert-parallel instead.
+5. **`missing CUDA CUBIN: ~/.cache/vllm/deep_gemm/...`, `OSError: [Errno 116] Stale file handle`.** Ranks race on kernel caches on Lustre. -> node-local cache directories (section 4).
+6. **A crashed or hung server keeps burning allocation.** -> the wait loop checks the server is alive, `srun --kill-on-bad-exit=1`, and a hard `--time` cap.
+7. **`TimeoutError: Timed out waiting for engine core processes to start ... 600s`.** Kernels are JIT-compiling on first start. -> `VLLM_ENGINE_READY_TIMEOUT_S=3600`.
 
-## Known limitations
+Tip: the useful error is rarely at the bottom of the log. Search `logs/vllm_serve_<jobid>.log` and `logs/vllm_worker_<jobid>.log` for the first `ERROR`, not the last.
 
-- **Short benchmarks only.** Nothing here measures a 250k-token prompt (prefill time, long-context decode).
-- **Single run per model**, no repeats, so no error bars.
-- **Node-local caches mean kernels recompile every job** (~1 minute of start-up).
-- **Provenance.** Runs made before `run.sh` existed were copied by hand from job logs; their results files say so under
-  `provenance`.
+## 10. Known limitations
+
+- **Short benchmarks only.** Nothing here measures a 250k-token prompt (prefill time, long-context decode speed).
+- **A single run per model**, no repeats, so no error bars.
+- **Node-local caches mean kernels recompile every job** (about 1 minute of start-up).

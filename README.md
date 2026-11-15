@@ -1,25 +1,14 @@
 # how-to-run-llm-on-isambard
 
-Run large open-weight LLMs on Isambard-AI (GH200) with vLLM: one command per model, measured speed, and
-what it costs in GPU-hours.
+A practical guide to running large open-weight LLMs on Isambard-AI (NVIDIA GH200) with vLLM: **how to do it, what
+throughput to expect, and what node setup each model needs**, with nine models measured as worked examples.
 
-- **[Stats site](https://wd7512.github.io/how-to-run-llm-on-isambard/)**: overview of all models, then a page per model with its own steps
-- **[HOWTO.md](HOWTO.md)**: the full guide, per-model notes and troubleshooting
-- **`scripts/`**: `run.sh` (one command), `collect_results.py`, `build_site.py`, and one small file per model in `scripts/models/`
-- **`results/`**: one JSON per model (benchmarks, token counts, GPU-hours, provenance)
-
-## Run a model
-
-On an Isambard-AI Phase 2 login node:
-
-```bash
-git clone https://github.com/wd7512/how-to-run-llm-on-isambard.git && cd how-to-run-llm-on-isambard
-MODEL=qwen38 bash scripts/run.sh                  # setup + download + container build + serve + benchmark, chained
-MODEL=qwen38 python3 scripts/collect_results.py   # when the serve job has finished: writes results/qwen38_benchmarks.json
-```
-
-`MODEL` is any name in the table below. `run.sh` skips steps already done, requests only the GPUs the model
-needs (billing is per GPU), and caps the serve job's time so a hang cannot burn allocation.
+- **[Stats site](https://wd7512.github.io/how-to-run-llm-on-isambard/)**: an overview of all models, then a page per model with
+  exactly how it was served (the Slurm request, container command, environment and `vllm serve` flags)
+- **[HOWTO.md](HOWTO.md)**: the guide: what Isambard-AI is like, the recipe step by step, how to choose a node setup, what each
+  flag means, troubleshooting
+- **`scripts/` and `results/`**: the scripts that produced the numbers (a worked example, not a tool you have to use) and the
+  raw results, one JSON per model
 
 ## Models
 
@@ -43,13 +32,8 @@ tokens** (4 input tokens per output token), 256 requests per run, random-token p
 Isambard-AI charges per GPU (1 GPU = 0.25 node-hours per hour). "GPU-hours to reproduce" is download + container
 build (shared) + one serve-and-benchmark run.
 
-## Determinism
-
-Everything that affects a result is pinned or recorded: the container by digest (vLLM 0.33.0, torch 2.14, CUDA 13.0),
-each model by Hugging Face commit (`MODEL_REVISION` in its `.env`), the benchmark by seed and token lengths, and every
-run saves its own metadata and measured token counts (`logs/run_<jobid>/`). `collect_results.py` writes the results
-file from those, and `build_site.py` generates the site and tables from them, so no number is typed in by hand.
-Runs made before this pipeline existed are marked in their results file under `provenance`.
+Everything that affects a result is pinned or recorded (image digest, model commit, benchmark seed and token lengths, the
+effective command of each run); see section 7 of the [guide](HOWTO.md#7-the-worked-example-this-repos-scripts).
 
 Unofficial and unaffiliated with Isambard/BriCS or any model vendor. Isambard facts come from the
 [Isambard documentation](https://docs.isambard.ac.uk/).

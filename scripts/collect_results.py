@@ -105,7 +105,7 @@ def main():
         "system": "Isambard-AI Phase 2, %d x GH200 (96 GiB HBM each), %d node%s" % (gpus, meta["nodes"], "" if meta["nodes"] == 1 else "s"),
         "software": {"vllm": meta["vllm"], "torch": meta["torch"], "cuda": meta["cuda"], "image": meta["image"]},
         "layout": "TP%d x DP%d%s, %d node(s)" % (meta["tp"], meta["dp_per_node"] * meta["nodes"], " + expert-parallel" if meta["ep"] else "", meta["nodes"]),
-        "vllm_args": meta["extra_args"], "gpus": gpus, "job_ids": {"download": download, "build": build, "serve": serve},
+        "vllm_args": meta["extra_args"], "serve_command": meta.get("serve_command"), "worker_command": meta.get("worker_command"), "env": meta.get("env", {}), "gpus": gpus, "job_ids": {"download": download, "build": build, "serve": serve},
         "workload": {"tool": "vllm bench serve", "dataset": "random", "input_tokens_per_request": 1024,
                      "output_tokens_per_request": 256, "seed": 0, "requests_per_level": "4 x concurrency"},
         "load": load, "results": results,

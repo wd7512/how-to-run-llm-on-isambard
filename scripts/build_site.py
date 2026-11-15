@@ -40,6 +40,7 @@ def load():
                            layout=r["layout"], software=r["software"], workload=r["workload"], load=r["load"], results=r["results"],
                            cost_metric=cm, gpu_hours=r["gpu_hours"], provenance=r.get("provenance", {}),
                            gph1m=cm["gpu_hours_per_1m_output_tokens"], vllm_args=e.get("VLLM_EXTRA_ARGS", ""),
+                           serve_command=r.get("serve_command"), worker_command=r.get("worker_command"), env=r.get("env", {}),
                            tok64=top["output_tok_s"], tok1=r["results"][0]["output_tok_s"]))
     return models
 
@@ -67,6 +68,9 @@ def sections_md(models):
         out.append("```bash\n"
                    f"MODEL={m['key']} bash scripts/run.sh               # {m['nodes']} node(s) x {m['gpus_per_node']} GPU(s), time cap {m['time_cap']}\n"
                    f"MODEL={m['key']} python3 scripts/collect_results.py   # when the serve job has finished\n```\n")
+        if m.get("serve_command"):
+            cmd = re.sub(r" (--[a-z0-9.-]+)", r" \\\n  \1", m["serve_command"])
+            out.append("What the head node ran (recorded by the run):\n\n```bash\n" + cmd + "\n```\n")
         out.append(f"Measured: {fmt(m['tok1'], 1)} output tok/s for one user, {fmt(m['tok64'])} at 64 users; "
                    f"**{m['gph1m']:.2f} GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, "
                    f"64-user run = {cm['run_input_tokens']:,} input / {cm['run_output_tokens']:,} output tokens); "
@@ -74,6 +78,15 @@ def sections_md(models):
         if m["notes"]:
             out.append("\n".join("- " + re.sub(r"<code>(.*?)</code>", r"`\1`", n) for n in m["notes"]) + "\n")
     return "\n".join(out)
+
+
+def fit_md(models):
+    rows = ["| GPUs | Nodes | Model | Weights per GPU | Concurrent 262k contexts held | Layout |", "|---:|---:|---|---:|---:|---|"]
+    for m in sorted(models, key=lambda m: (m["gpus"], m["gph1m"])):
+        l = m["load"]
+        rows.append(f"| {m['gpus']} | {m['nodes']} | [{m['label']}](#{m['key']}) | {l.get('weights_gib_per_gpu', 0):.0f} GiB | "
+                    f"{l.get('max_concurrency_at_262144_ctx', 0):.1f} | {m['layout']} |")
+    return "\n".join(rows)
 
 
 def replace_block(path, name, content):
@@ -90,6 +103,7 @@ def main():
                                           "window.SITE = " + json.dumps(data, indent=1) + ";\n")
     replace_block(J("README.md"), "models-table", table_md(models))
     replace_block(J("HOWTO.md"), "models-table", table_md(models))
+    replace_block(J("HOWTO.md"), "fit-table", fit_md(models))
     replace_block(J("HOWTO.md"), "model-sections", sections_md(models))
     print("built", len(models), "models:", ", ".join(m["key"] for m in models))
 

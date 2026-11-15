@@ -37,6 +37,9 @@ LAYOUT="--tensor-parallel-size $TP"
 COMMON="$MODEL_DIR --served-model-name $SERVED_NAME $LAYOUT \
   --max-model-len $MAX_LEN --max-num-seqs 64 --gpu-memory-utilization 0.90 $VLLM_EXTRA_ARGS"
 
+# The exact commands this run uses; recorded in meta.json so the guide shows what was really executed.
+export SERVE_CMD="vllm serve $COMMON --port 8000"
+export WORKER_CMD="vllm serve $COMMON --headless --data-parallel-start-rank <node-rank x DP_PER_NODE>"
 RUN_DIR="$REPO_DIR/logs/run_$SLURM_JOB_ID"      # machine-readable output of this run, read by collect_results.py
 mkdir -p "$RUN_DIR"
 echo "node $SLURM_NODEID host $(hostname) ip $VLLM_HOST_IP head $HEAD_NODE"
@@ -53,8 +56,14 @@ if [ "$SLURM_NODEID" = "0" ]; then
   echo "=== server up $(date) ==="
 
   python3 - > "$RUN_DIR/meta.json" <<PY
-import json, os, vllm, torch
-print(json.dumps({"model": os.environ["MODEL"], "repo": os.environ["MODEL_REPO"], "revision": os.environ["MODEL_REVISION"],
+import json, os, re, vllm, torch
+def clean(t):  # drop machine-specific names so the recorded command is portable
+    t = t.replace(os.environ["MODEL_DIR"], "<model-dir>").replace(os.environ["HEAD_NODE"], "<head-node>")
+    return " ".join(t.split())
+ENV = ["HF_HUB_OFFLINE", "TRITON_LIBCUDA_PATH", "VLLM_ENGINE_READY_TIMEOUT_S", "DG_JIT_CACHE_DIR", "TRITON_CACHE_DIR",
+       "VLLM_CACHE_ROOT", "TORCHINDUCTOR_CACHE_DIR", "XDG_CACHE_HOME"]
+env = {k: re.sub(r"/local/user/\\d+/cache_\\d+", "/local/<node-local-cache>", os.environ[k]) for k in ENV if k in os.environ}
+print(json.dumps({"serve_command": clean(os.environ["SERVE_CMD"]), "worker_command": clean(os.environ["WORKER_CMD"]) if int(os.environ["NODES"]) > 1 else None, "env": env,"model": os.environ["MODEL"], "repo": os.environ["MODEL_REPO"], "revision": os.environ["MODEL_REVISION"],
   "served_name": os.environ["SERVED_NAME"], "vllm": vllm.__version__, "torch": torch.__version__, "cuda": torch.version.cuda,
   "image": os.environ["IMAGE_REF"], "job_id": os.environ["SLURM_JOB_ID"], "nodes": int(os.environ["NODES"]),
   "gpus_per_node": int(os.environ["GPUS"]), "tp": int(os.environ["TP"]), "dp_per_node": int(os.environ["DP_PER_NODE"]),

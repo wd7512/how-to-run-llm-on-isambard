@@ -212,6 +212,7 @@ function scatter(target, current) {
 
 // ---- views ----------------------------------------------------------------
 const TOK = "<strong>every request has 1,024 input tokens and 256 output tokens</strong> (4 input tokens per output token), 256 requests per run, random-token prompts, seed 0";
+function fmtCmd(c) { return c.replace(/ (--[a-z0-9.-]+)/g, " \\\n  $1"); }
 const CLONE = "git clone " + REPO + ".git && cd how-to-run-llm-on-isambard";
 
 function overview() {
@@ -219,8 +220,9 @@ function overview() {
   const sorted = [...MODELS].sort((a, b) => a.gph1m - b.gph1m);
   const v = $("view");
   v.innerHTML = `
-  <p class="sub">Measured speed and cost of serving ${MODELS.length} large open-weight models on Isambard-AI (GH200 GPUs) with vLLM ${esc(MODELS[0].software.vllm)}.
-    Every model runs from one command and is benchmarked on the same fixed workload. Pick a model above for its numbers, exact steps and notes.</p>
+  <p class="sub">A practical guide to running large open-weight LLMs on Isambard-AI (GH200 GPUs) with vLLM: how it is done, what
+    throughput to expect, and what node setup each model needs. ${MODELS.length} models measured on the same fixed workload with vLLM ${esc(MODELS[0].software.vllm)}.
+    Pick a model above to see exactly how it was served.</p>
   <section class="tiles" aria-label="Headline numbers">
     <div class="tile"><div class="label">Models measured</div><div class="value">${MODELS.length}</div><p class="note">from ${fmt(Math.min(...MODELS.map(m => m.weights_gb)), 0)} GB to ${fmt(Math.max(...MODELS.map(m => m.weights_gb)), 0)} GB of weights</p></div>
     <div class="tile"><div class="label">Cheapest per token</div><div class="value">${esc(cheapest.label)}</div><p class="note">${fmt(cheapest.gph1m, 2)} GPU-hours per 1M output tokens on ${cheapest.gpus} GPU${cheapest.gpus > 1 ? "s" : ""}</p></div>
@@ -233,7 +235,7 @@ function overview() {
   </section>
   <section class="card">
     <h2>All models</h2>
-    <p class="desc">Sorted cheapest first. Click a row for details and exact steps. GPU-hours to reproduce = download + container build (shared) + one serve-and-benchmark run.</p>
+    <p class="desc">Sorted cheapest first. Click a row for how it was served. GPU-hours to reproduce = download + container build (shared) + one serve-and-benchmark run.</p>
     <div class="tablewrap"><table class="cmp">
       <thead><tr><th>Model</th><th>GPUs</th><th>Weights</th><th>1 user tok/s</th><th>64 users tok/s</th><th>GPU-h per 1M out tok</th><th>GPU-h to reproduce</th><th>Status</th></tr></thead>
       <tbody>${sorted.map(m => `<tr class="row" data-k="${m.key}"><td>${esc(m.label)}</td><td>${m.gpus}</td><td>${fmt(m.weights_gb, m.weights_gb < 100 ? 1 : 0)} GB</td><td>${fmt(m.tok1, m.tok1 < 10 ? 1 : 0)}</td><td>${fmt(m.tok64)}</td><td>${fmt(m.gph1m, 2)}</td><td>${fmt(m.gpu_hours.total, 2)}</td><td>${esc(m.status)}</td></tr>`).join("")}</tbody>
@@ -244,20 +246,30 @@ function overview() {
     <p class="desc">One benchmark for every model: <code>vllm bench serve</code> with random prompts, ${TOK}. It is run at 1, 16 and 64 concurrent users (4 &times; concurrency requests each); the 64-user run is 256 requests, 262,144 input and 65,536 output tokens. GPU-hours come from Slurm accounting. Isambard-AI charges per GPU, so a model that fits on 1 GPU costs a quarter of a node. All runs: vLLM ${esc(MODELS[0].software.vllm)}, torch ${esc(MODELS[0].software.torch)}, CUDA ${esc(MODELS[0].software.cuda)}, one container image pinned by digest; each model pinned to a Hugging Face commit.</p>
   </section>
   <section class="card">
-    <h2>Run any of them</h2>
-    <p class="desc">On an Isambard-AI Phase 2 login node. <code>run.sh</code> chains download, container build and serve with Slurm dependencies, requests only the GPUs the model needs and caps the job time.</p>
-<pre>${esc(CLONE)}
-MODEL=qwen38 bash scripts/run.sh                  # any model key; see the Models page
-MODEL=qwen38 python3 scripts/collect_results.py   # after the serve job finishes</pre>
-    <p class="desc"><a href="${REPO}/blob/main/HOWTO.md">Full guide, adding a model, and troubleshooting &rarr;</a></p>
+    <h2>What fits where</h2>
+    <p class="desc">Measured setups, smallest first. Isambard charges per GPU, so use the fewest that fit: weights per GPU plus enough KV cache for the context you need.</p>
+    <div class="tablewrap"><table class="cmp">
+      <thead><tr><th>GPUs</th><th>Models that ran on this setup</th><th>Weights per GPU</th><th>262k contexts held</th></tr></thead>
+      <tbody>${[...new Set(MODELS.map(m => m.gpus))].sort((a, b) => a - b).map(g => MODELS.filter(m => m.gpus === g).map((m, i, arr) => `<tr class="row" data-k="${m.key}"><td>${i === 0 ? g + (g > 4 ? " (" + m.nodes + " nodes)" : "") : ""}</td><td>${esc(m.label)}</td><td>${fmt(m.load.weights_gib_per_gpu || 0)} GiB</td><td>${fmt(m.load.max_concurrency_at_262144_ctx || 0, 1)}</td></tr>`).join("")).join("")}</tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>The recipe in four steps</h2>
+    <p class="desc">All heavy work runs in Slurm jobs, never on the login node (about 1 core and 4 GiB). Each model page shows its exact commands.</p>
+    <ol class="notes">
+      <li><strong>Download</strong> the weights to <code>$SCRATCHDIR</code> in a 1-GPU job with <code>hf download &lt;repo&gt; --revision &lt;commit&gt;</code> (about 1 GB/s).</li>
+      <li><strong>Build</strong> an arm64 Apptainer image from the vLLM container, pinned by digest (once, about 20 minutes).</li>
+      <li><strong>Serve</strong> with <code>srun apptainer exec --nv &hellip; vllm serve</code>, requesting only the nodes and GPUs the model needs. Across nodes: data-parallel + expert-parallel, tensor-parallel inside each node.</li>
+      <li><strong>Benchmark</strong> with <code>vllm bench serve</code>: random prompts, 1,024 input and 256 output tokens, at 1, 16 and 64 concurrent users.</li>
+    </ol>
+    <p class="desc"><a href="${REPO}/blob/main/HOWTO.md">The full guide: Isambard-AI facts, choosing a node setup, what every flag means, troubleshooting &rarr;</a> &middot; <a href="${REPO}">the scripts (a worked example) &rarr;</a></p>
   </section>
   <section class="card">
     <h2>Caveats</h2>
     <ul class="caveats">
       <li>Short prompts only. Nothing here measures a 250k-token prompt (prefill time or long-context decode speed), and a different input/output ratio would change the cost figure.</li>
       <li>One run per model, no repeats, so no error bars.</li>
-      <li>Runs made before the one-command pipeline existed were copied from job logs by hand; each model page says which scripts produced it.</li>
-    </ul>
+          </ul>
   </section>`;
   scatter($("c-scatter"), null);
   v.querySelectorAll("tr.row").forEach(r => r.addEventListener("click", () => go(r.dataset.k)));
@@ -278,12 +290,23 @@ function detail(m) {
     <div class="tile"><div class="label">Aggregate at 64 concurrent users</div><div class="value">${fmt(m.tok64)} tok/s</div><p class="note">each user sees ~${fmt(1000 / top.mean_tpot_ms)} tok/s</p></div>
     <div class="tile"><div class="label">Cost per 1M output tokens</div><div class="value">${fmt(m.gph1m, 2)} GPU-h</div><p class="note">at 64 users, 1,024 in / 256 out per request</p></div>
   </section>
-  <section class="card"><h2>Run it</h2>
-    <p class="desc">Exact steps for this model on an Isambard-AI Phase 2 login node. Requests ${m.nodes} node${m.nodes > 1 ? "s" : ""} &times; ${m.gpus_per_node} GPU${m.gpus_per_node > 1 ? "s" : ""}, job time cap ${esc(m.time_cap)}. The first model you run also builds the shared container (about 20 minutes, ${fmt(gh.build, 2)} GPU-hours).</p>
+  <section class="card"><h2>How it was served</h2>
+    <p class="desc">What the job actually ran, recorded by the run itself. Slurm request: <code>--nodes=${m.nodes} --gpus-per-node=${m.gpus_per_node} --time=${esc(m.time_cap)}</code>. Everything runs inside the container, started once per node:</p>
+<pre>module load brics/nccl brics/apptainer-multi-node   # Slingshot RDMA env for multi-node NCCL
+srun --kill-on-bad-exit=1 --export=ALL \\
+  apptainer exec --nv --bind $SCRATCHDIR --bind $REPO_DIR vllm-0.33.0-arm64.sif \\
+  scripts/node_entry.sh   # sets the environment below, then starts vLLM</pre>
+    ${m.env && Object.keys(m.env).length ? `<p class="desc">Environment set inside the container:</p><pre>${esc(Object.entries(m.env).map(([k, v]) => k + "=" + v).join("\n"))}</pre>` : ""}
+    ${m.serve_command ? `<p class="desc">${m.nodes > 1 ? "Head node (node 0), which also runs the benchmark" : "The server"}:</p><pre>${esc(fmtCmd(m.serve_command))}</pre>` : ""}
+    ${m.worker_command ? `<p class="desc">Other nodes (data-parallel workers):</p><pre>${esc(fmtCmd(m.worker_command))}</pre>` : ""}
+    ${m.notes.length ? `<h2 style="margin-top:12px">What we had to do for this model, and why</h2><ul class="notes">${m.notes.map(n => `<li>${n}</li>`).join("")}</ul>` : ""}
+    <p class="desc">Flags are explained in the <a href="${REPO}/blob/main/HOWTO.md#what-the-vllm-flags-mean">guide</a>.</p>
+  </section>
+  <section class="card"><h2>Reproduce it (worked example)</h2>
+    <p class="desc">The repo\'s scripts are an example of the steps, not a tool you must use. Exact commands for this model on an Isambard-AI Phase 2 login node. Requests ${m.nodes} node${m.nodes > 1 ? "s" : ""} &times; ${m.gpus_per_node} GPU${m.gpus_per_node > 1 ? "s" : ""}, job time cap ${esc(m.time_cap)}. The first model you run also builds the shared container (about 20 minutes, ${fmt(gh.build, 2)} GPU-hours).</p>
 <pre>${esc(CLONE)}
 MODEL=${m.key} bash scripts/run.sh
 MODEL=${m.key} python3 scripts/collect_results.py   # after the serve job finishes</pre>
-    ${m.notes.length ? `<h2 style="margin-top:12px">Notes for this model</h2><ul class="notes">${m.notes.map(n => `<li>${n}</li>`).join("")}</ul>` : ""}
     <p class="desc"><a href="${REPO}/blob/main/HOWTO.md#${m.key}">This model in the guide &rarr;</a> &middot; <a href="${REPO}/blob/main/scripts/models/${m.key}.env">its settings file &rarr;</a> &middot; <a href="${REPO}/blob/main/results/${m.key}_benchmarks.json">raw results &rarr;</a></p>
   </section>
   <section class="card"><h2>Aggregate output throughput</h2>
