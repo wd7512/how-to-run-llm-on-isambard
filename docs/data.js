@@ -808,6 +808,109 @@ window.SITE = {
    "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
    "tok64": 2702.8,
    "tok1": 207.99
+  },
+  {
+   "order": 9,
+   "label": "Ornith-1.0-35B",
+   "hf": "ornith-ai/Ornith-1.0-35B",
+   "weights_gb": 70.3,
+   "summary": "MoE, 256 experts (8 active), bf16, reasoning model",
+   "status": "worked",
+   "description": "<code>ornith-ai/Ornith-1.0-35B</code>: MoE with 256 experts (8 active), about 35B parameters, bf16, 70.3 GB, 262k context, MIT. A reasoning model on the Qwen3.5-MoE architecture.",
+   "notes": [
+    "Ungated, so no Hugging Face token is needed. Needs vLLM 0.19.1 or newer (the image has 0.33).",
+    "Uses the model card's flags: <code>qwen3</code> reasoning parser, <code>qwen3_xml</code> tool-call parser, prefix caching.",
+    "It is a reasoning model: the 64-token smoke-test reply is all thinking (returned in the <code>reasoning</code> field, empty <code>content</code>), which is expected and does not affect the benchmark.",
+    "One GPU is enough: 65.5 GiB of weights leave a KV cache that holds about 3.4 full 262k-token contexts."
+   ],
+   "caveats": [],
+   "key": "ornith35b",
+   "nodes": 1,
+   "gpus_per_node": 1,
+   "gpus": 1,
+   "time_cap": "00:30:00",
+   "revision": "5df2ed3f675c7beaa490328cc70bb573b65fb660",
+   "date": "2026-11-15",
+   "layout": "TP1 x DP1, 1 node(s)",
+   "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
+   },
+   "workload": {
+    "tool": "vllm bench serve",
+    "dataset": "random",
+    "input_tokens_per_request": 1024,
+    "output_tokens_per_request": 256,
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
+   },
+   "load": {
+    "weights_gib_per_gpu": 65.45,
+    "load_seconds": 21,
+    "kv_cache_tokens": 892338,
+    "max_concurrency_at_262144_ctx": 3.4
+   },
+   "results": [
+    {
+     "concurrency": 1,
+     "requests": 4,
+     "failed": 0,
+     "output_tok_s": 217.51,
+     "mean_ttft_ms": 100.24,
+     "mean_tpot_ms": 4.22,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 4.7
+    },
+    {
+     "concurrency": 16,
+     "requests": 64,
+     "failed": 0,
+     "output_tok_s": 1294.64,
+     "mean_ttft_ms": 446.89,
+     "mean_tpot_ms": 10.64,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 12.7
+    },
+    {
+     "concurrency": 64,
+     "requests": 256,
+     "failed": 0,
+     "output_tok_s": 2687.0,
+     "mean_ttft_ms": 495.02,
+     "mean_tpot_ms": 21.91,
+     "total_input_tokens": 262144,
+     "total_output_tokens": 65536,
+     "duration_s": 24.4
+    }
+   ],
+   "cost_metric": {
+    "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
+    "run_requests": 256,
+    "run_input_tokens": 262144,
+    "run_output_tokens": 65536,
+    "run_duration_s": 24.4,
+    "gpus": 1,
+    "run_gpu_hours": 0.0068,
+    "gpu_hours_per_1m_output_tokens": 0.103
+   },
+   "gpu_hours": {
+    "download": 0.019,
+    "build": 0.29,
+    "serve": 0.06,
+    "total": 0.37,
+    "notes": [
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
+   },
+   "provenance": {},
+   "gph1m": 0.103,
+   "vllm_args": "--enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --trust-remote-code",
+   "tok64": 2687.0,
+   "tok1": 217.51
   }
  ]
 };

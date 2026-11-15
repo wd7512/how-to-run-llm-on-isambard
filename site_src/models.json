@@ -145,7 +145,9 @@
   "description": "<code>ornith-ai/Ornith-1.0-35B</code>: MoE with 256 experts (8 active), about 35B parameters, bf16, 70.3 GB, 262k context, MIT. A reasoning model on the Qwen3.5-MoE architecture.",
   "notes": [
    "Ungated, so no Hugging Face token is needed. Needs vLLM 0.19.1 or newer (the image has 0.33).",
-   "Uses the model card's flags: <code>qwen3</code> reasoning parser, <code>qwen3_xml</code> tool-call parser, prefix caching."
+   "Uses the model card's flags: <code>qwen3</code> reasoning parser, <code>qwen3_xml</code> tool-call parser, prefix caching.",
+   "It is a reasoning model: the 64-token smoke-test reply is all thinking (returned in the <code>reasoning</code> field, empty <code>content</code>), which is expected and does not affect the benchmark.",
+   "One GPU is enough: 65.5 GiB of weights leave a KV cache that holds about 3.4 full 262k-token contexts."
   ],
   "caveats": []
  }

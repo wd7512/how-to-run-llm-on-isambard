@@ -34,6 +34,7 @@ needs (billing is per GPU), and caps the serve job's time so a hang cannot burn 
 | `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 156 / 2,660 | 0.42 | ~0.73 | worked |
 | `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,647 | 0.34 | ~0.51 | worked |
 | `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 208 / 2,703 | 0.10 | ~0.41 | worked |
+| `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 218 / 2,687 | 0.10 | ~0.37 | worked |
 <!-- END:models-table -->
 
 **GPU-hours per 1M output tokens** is the comparable cost: GPUs ÷ aggregate output tok/s at 64 users ÷ 3,600 × 1,000,000

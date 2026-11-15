@@ -48,6 +48,7 @@ cap. When the head node finishes, it writes `logs/run_<jobid>/DONE` and the othe
 | `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 156 / 2,660 | 0.42 | ~0.73 | worked |
 | `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,647 | 0.34 | ~0.51 | worked |
 | `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 208 / 2,703 | 0.10 | ~0.41 | worked |
+| `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 218 / 2,687 | 0.10 | ~0.37 | worked |
 <!-- END:models-table -->
 
 ## Per-model notes and exact commands
@@ -173,6 +174,22 @@ Measured: 208.0 output tok/s for one user, 2,703 at 64 users; **0.10 GPU-hours p
 - Ungated, so no Hugging Face token is needed.
 - `google/gemma-4-26B-A4B` is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is `google/gemma-4-26B-A4B-it`; the architecture and size are the same, so speed should match, but it was not run.
 - Uses vLLM's `gemma4` reasoning and tool-call parsers.
+
+### ornith35b
+
+**Ornith-1.0-35B** ([ornith-ai/Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B), revision `5df2ed3f675c`). `ornith-ai/Ornith-1.0-35B`: MoE with 256 experts (8 active), about 35B parameters, bf16, 70.3 GB, 262k context, MIT. A reasoning model on the Qwen3.5-MoE architecture.
+
+```bash
+MODEL=ornith35b bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 00:30:00
+MODEL=ornith35b python3 scripts/collect_results.py   # when the serve job has finished
+```
+
+Measured: 217.5 output tok/s for one user, 2,687 at 64 users; **0.10 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.37 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
+
+- Ungated, so no Hugging Face token is needed. Needs vLLM 0.19.1 or newer (the image has 0.33).
+- Uses the model card's flags: `qwen3` reasoning parser, `qwen3_xml` tool-call parser, prefix caching.
+- It is a reasoning model: the 64-token smoke-test reply is all thinking (returned in the `reasoning` field, empty `content`), which is expected and does not affect the benchmark.
+- One GPU is enough: 65.5 GiB of weights leave a KV cache that holds about 3.4 full 262k-token contexts.
 
 <!-- END:model-sections -->
 
