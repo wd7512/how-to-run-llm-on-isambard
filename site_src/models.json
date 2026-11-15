@@ -109,10 +109,13 @@
   "description": "<code>google/gemma-4-31B</code>: dense 31B, bf16, 62.6 GB, 262k context, Apache-2.0. The weights fit on one GPU, but a full 262k context needs 2.",
   "notes": [
    "Ungated, so no Hugging Face token is needed.",
+   "<code>google/gemma-4-31B</code> is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is <code>google/gemma-4-31B-it</code>; the architecture and size are the same, so speed should match, but it was not run.",
    "On one GPU vLLM refuses to start at 262,144 context: the weights take 58 GiB, leaving 24.5 GiB, and the KV cache for one 262k sequence needs 33.3 GiB (max context on 1 GPU is about 147k). The preset uses 2 GPUs (tensor-parallel 2).",
    "Uses vLLM's <code>gemma4</code> reasoning and tool-call parsers."
   ],
-  "caveats": []
+  "caveats": [
+   "Base (pre-trained) checkpoint with no chat template, not the instruction-tuned <code>-it</code> variant."
+  ]
  },
  "gemma26b": {
   "order": 8,
@@ -124,8 +127,11 @@
   "description": "<code>google/gemma-4-26B-A4B</code>: MoE with 128 experts (8 active, about 4B active parameters), bf16, 51.6 GB, 262k context, Apache-2.0. Fits on a single GPU.",
   "notes": [
    "Ungated, so no Hugging Face token is needed.",
+   "<code>google/gemma-4-26B-A4B</code> is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is <code>google/gemma-4-26B-A4B-it</code>; the architecture and size are the same, so speed should match, but it was not run.",
    "Uses vLLM's <code>gemma4</code> reasoning and tool-call parsers."
   ],
-  "caveats": []
+  "caveats": [
+   "Base (pre-trained) checkpoint with no chat template, not the instruction-tuned <code>-it</code> variant."
+  ]
  }
 }

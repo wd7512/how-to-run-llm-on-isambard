@@ -76,7 +76,11 @@ def main():
     top = results[-1]
     dur = top["duration_s"]
     smoke = json.load(open(os.path.join(run, "smoke.json")))
-    msg = smoke["choices"][0]["message"]
+    if "choices" in smoke:
+        msg = smoke["choices"][0]["message"]
+        smoke_out = {"content": (msg.get("content") or "")[:200], "has_reasoning_field": bool(msg.get("reasoning") or msg.get("reasoning_content"))}
+    else:  # e.g. a base model with no chat template: record the error; the benchmark itself does not use the chat API
+        smoke_out = {"error": (smoke.get("error", {}).get("message") or str(smoke))[:200]}
     hours = gpu_hours([download, build, serve])
     steps = {"download": hours.get(download, {}).get("gpu_hours"), "build": hours.get(build, {}).get("gpu_hours"),
              "serve": hours.get(serve, {}).get("gpu_hours")}
@@ -99,7 +103,7 @@ def main():
         "workload": {"tool": "vllm bench serve", "dataset": "random", "input_tokens_per_request": 1024,
                      "output_tokens_per_request": 256, "seed": 0, "requests_per_level": "4 x concurrency"},
         "load": load, "results": results,
-        "smoke_reply": {"content": (msg.get("content") or "")[:200], "has_reasoning_field": bool(msg.get("reasoning") or msg.get("reasoning_content"))},
+        "smoke_reply": smoke_out,
         "cost_metric": {
             "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
             "run_requests": top["requests"], "run_input_tokens": top["total_input_tokens"], "run_output_tokens": top["total_output_tokens"],

@@ -65,6 +65,9 @@ PY
     -d '{"model":"'$SERVED_NAME'","messages":[{"role":"user","content":"Say hello in one sentence."}],"max_tokens":64}' \
     | tee "$RUN_DIR/smoke.json"
   echo
+  # Base models have no chat template: the chat call errors, so also try plain completions (informational).
+  grep -q '"error"' "$RUN_DIR/smoke.json" && curl -s localhost:8000/v1/completions -H "Content-Type: application/json" \
+    -d '{"model":"'$SERVED_NAME'","prompt":"Hello, my name is","max_tokens":32}' | tee "$RUN_DIR/smoke_completions.json" && echo
 
   # The benchmark. Fixed workload: random prompts of exactly 1024 input tokens, 256 output tokens, seed 0.
   # Results are saved as JSON (cN.json) with the measured token counts, not scraped from text.
