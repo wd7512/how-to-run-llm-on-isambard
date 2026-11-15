@@ -1,0 +1,52 @@
+{
+  "model": "XiaomiMiMo/MiMo-V2.6-Flash-RL",
+  "preset": "mimo26",
+  "date": "2026-11-15",
+  "system": "Isambard-AI Phase 2, 4 x GH200 (96 GiB HBM each), 1 node",
+  "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "driver": "580.178.04"
+  },
+  "layout": "tensor-parallel 4, 1 node",
+  "mode": "CUDA graphs on",
+  "workload": {
+    "dataset": "vllm bench serve --dataset-name random",
+    "input_tokens": 1024,
+    "output_tokens": 256,
+    "prompts_per_level": "4 x concurrency"
+  },
+  "load": {
+    "weights_gib_per_gpu": 41.57,
+    "load_seconds": 98,
+    "kv_cache_tokens": 4322991,
+    "max_concurrency_at_262144_ctx": 16.49
+  },
+  "results": [
+    {
+      "concurrency": 1,
+      "requests": 4,
+      "failed": 0,
+      "output_tok_s": 230.21,
+      "mean_ttft_ms": 98.96,
+      "mean_tpot_ms": 3.97
+    },
+    {
+      "concurrency": 16,
+      "requests": 64,
+      "failed": 0,
+      "output_tok_s": 1415.61,
+      "mean_ttft_ms": 342.09,
+      "mean_tpot_ms": 9.99
+    },
+    {
+      "concurrency": 64,
+      "requests": 256,
+      "failed": 0,
+      "output_tok_s": 2379.63,
+      "mean_ttft_ms": 614.8,
+      "mean_tpot_ms": 24.53
+    }
+  ]
+}

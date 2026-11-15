@@ -1,0 +1,52 @@
+{
+  "model": "Qwen/Qwen3.8-Flash-Next",
+  "preset": "qwen38flash",
+  "date": "2026-11-15",
+  "system": "Isambard-AI Phase 2, 4 x GH200 (96 GiB HBM each), 1 node",
+  "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "driver": "580.178.04"
+  },
+  "layout": "tensor-parallel 4 + expert-parallel, 1 node, n-gram embedding offloaded to host RAM",
+  "mode": "CUDA graphs on",
+  "workload": {
+    "dataset": "vllm bench serve --dataset-name random",
+    "input_tokens": 1024,
+    "output_tokens": 256,
+    "prompts_per_level": "4 x concurrency"
+  },
+  "load": {
+    "weights_gib_per_gpu": 60.75,
+    "load_seconds": 46,
+    "kv_cache_tokens": 1674853,
+    "max_concurrency_at_262144_ctx": 6.39
+  },
+  "results": [
+    {
+      "concurrency": 1,
+      "requests": 4,
+      "failed": 0,
+      "output_tok_s": 156.01,
+      "mean_ttft_ms": 176.43,
+      "mean_tpot_ms": 5.74
+    },
+    {
+      "concurrency": 16,
+      "requests": 64,
+      "failed": 0,
+      "output_tok_s": 1072.17,
+      "mean_ttft_ms": 722.8,
+      "mean_tpot_ms": 12.13
+    },
+    {
+      "concurrency": 64,
+      "requests": 256,
+      "failed": 0,
+      "output_tok_s": 2660.23,
+      "mean_ttft_ms": 610.36,
+      "mean_tpot_ms": 21.7
+    }
+  ]
+}

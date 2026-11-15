@@ -68,6 +68,40 @@
         }
       ],
       "total_gpu_hours": 0.4
+    },
+    "mimo26": {
+      "steps": [
+        {
+          "step": "Download weights (1 GPU)",
+          "gpu_hours": 0.05
+        },
+        {
+          "step": "Build container (1 GPU, shared)",
+          "gpu_hours": 0.29
+        },
+        {
+          "step": "Serve + benchmark (4 GPUs)",
+          "gpu_hours": 0.57
+        }
+      ],
+      "total_gpu_hours": 0.91
+    },
+    "qwen38flash": {
+      "steps": [
+        {
+          "step": "Download weights (1 GPU)",
+          "gpu_hours": 0.08
+        },
+        {
+          "step": "Build container (1 GPU, shared)",
+          "gpu_hours": 0.29
+        },
+        {
+          "step": "Serve + benchmark (4 GPUs)",
+          "gpu_hours": 0.36
+        }
+      ],
+      "total_gpu_hours": 0.73
     }
   }
 }

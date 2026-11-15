@@ -1,9 +1,9 @@
 # Running a large LLM on Isambard-AI (2 nodes, vLLM)
 
 Step-by-step, with the scripts in [`scripts/`](scripts/). Pick a model with `MODEL=dsv41` (default),
-`glm53`, `qwen38` or `flint`; measured results are on the [stats page](https://wd7512.github.io/how-to-run-llm-on-isambard/).
+`glm53`, `qwen38`, `flint`, `mimo26` or `qwen38flash`; measured results are on the [stats page](https://wd7512.github.io/how-to-run-llm-on-isambard/).
 
-> **Status.** `glm53`, `qwen38` and `flint` were run from a fresh clone. For `dsv41` the numbers come from the
+> **Status.** `glm53`, `qwen38`, `flint`, `mimo26` and `qwen38flash` were run from a fresh clone. For `dsv41` the numbers come from the
 > original absolute-path scripts; the current model-switch version has not been re-run for it.
 
 ## What you get
@@ -14,10 +14,12 @@ Step-by-step, with the scripts in [`scripts/`](scripts/). Pick a model with `MOD
 | `glm53` | GLM-5.3-Flash, MoE | 328 GB | 8 | same, `--enforce-eager` | 6.9 / 92 / 365 | ~2.3 |
 | `qwen38` | Qwen3.8-27B, dense | 55.6 GB | 1 | one replica | 57 / 642 / 1,399 | ~0.4 |
 | `flint` | Flint 40B-A2.5B (BF16), MoE | 79.6 GB | 2 | TP2 + EP | 196 / 1,721 / 3,986 | ~0.4 |
+| `mimo26` | MiMo-V2.6-Flash-RL, MoE | 178 GB | 4 | TP4 | 230 / 1,416 / 2,380 | ~0.9 |
+| `qwen38flash` | Qwen3.8-Flash-Next, MoE | 360 GB | 4 | TP4 + EP | 156 / 1,072 / 2,660 | ~0.7 |
 
 Software: vLLM 0.33.0, torch 2.14, CUDA 13.0, Apptainer, driver 580.178.04. Isambard-AI charges per GPU
 (1 GPU = 0.25 node-hours per hour), so each model requests only the GPUs it needs. After setup, serving
-costs `GPUS` GPU-hours per hour the job runs (8 for the two big models, 1 for `qwen38`, 2 for `flint`).
+costs `GPUS` GPU-hours per hour the job runs (8 for the two big models, 4 for `mimo26` and `qwen38flash`, 2 for `flint`, 1 for `qwen38`).
 
 ## Prerequisites
 
@@ -98,7 +100,7 @@ of the first node (`$HEAD_NODE`); tunnel to it with `ssh -L`.
 ## Why this configuration
 
 - **Big models need 2 nodes.** `dsv41` weights are 510 GB and `glm53` 328 GB; one node has ~384 GB of HBM.
-  `qwen38` (55.6 GB) fits on 1 GPU and `flint` (79.6 GB) on 2, so they request only that many.
+  `qwen38` (55.6 GB) fits on 1 GPU and `flint` (79.6 GB) on 2, `mimo26` (178 GB) and `qwen38flash` (360 GB, with its embedding table in host RAM) on 4 GPUs of one node.
 - **DP 2 x TP 4 + expert parallel** for the 2-node models, not pipeline parallel. The model's own code guards for
   exactly this multi-node layout (pipeline size 1, expert parallel on, TP > 1, DP > 1).
   MoE experts are sharded across all 8 GPUs, attention weights are replicated per node,

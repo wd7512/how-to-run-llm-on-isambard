@@ -16,6 +16,8 @@ measured speed, and what it costs you in GPU-hours. One switch picks the model.
 | `glm53` | GLM-5.3-Flash | 328 GB | 8 (2 nodes) | 6.9 / 365 | ~2.3 | works in `--enforce-eager` only; CUDA graphs hang |
 | `qwen38` | Qwen3.8-27B | 55.6 GB | **1** | 57 / 1,399 | ~0.4 | worked |
 | `flint` | Flint 40B-A2.5B (BF16 base of the JANGH2 quant) | 79.6 GB | **2** | 196 / 3,986 | ~0.4 | worked |
+| `mimo26` | MiMo-V2.6-Flash-RL | 178 GB | 4 (1 node) | 230 / 2,380 | ~0.9 | worked |
+| `qwen38flash` | Qwen3.8-Flash-Next | 360 GB | 4 (1 node) | 156 / 2,660 | ~0.7 | worked |
 
 Isambard-AI charges per GPU (1 GPU = 0.25 node-hours per hour), so the small models are requested with only
 the GPUs they need: set per model with `GPUS` in `scripts/models/<name>.env`. GPU-hours = download +
@@ -31,7 +33,7 @@ On an Isambard-AI Phase 2 login node:
 
 ```bash
 git clone https://github.com/wd7512/how-to-run-llm-on-isambard.git && cd how-to-run-llm-on-isambard
-export MODEL=qwen38                          # dsv41 (default) | glm53 | qwen38 | flint
+export MODEL=qwen38                          # dsv41 (default) | glm53 | qwen38 | flint | mimo26 | qwen38flash
 bash scripts/00_setup_login_node.sh          # venv with the Hugging Face CLI
 sbatch scripts/01_download.sbatch            # 2-10 min
 sbatch scripts/02_build_container.sbatch     # ~20 min, once; shared by all models
@@ -46,7 +48,7 @@ then run the same four commands with `MODEL=<yourfile>`. Check the vLLM recipe f
 
 ## Status
 
-`glm53`, `qwen38` and `flint` were run from a fresh clone of this repo. `dsv41` numbers come from the original
+`glm53`, `qwen38`, `flint`, `mimo26` and `qwen38flash` were run from a fresh clone of this repo. `dsv41` numbers come from the original
 absolute-path scripts; the current model-switch version has not been re-run for it.
 
 Unofficial and unaffiliated with Isambard/BriCS, DeepSeek or Z.ai, Alibaba or Recursive. Isambard facts come from the

@@ -194,6 +194,38 @@ const MODELS = {
               "One working run, no repeats, so no error bars.",
               "Doubling to 4 GPUs (2 replicas) reached 150 / 1,720 / 4,622 tok/s: 16% more at 64 users for twice the GPUs, and slower for a single user.",
               "The preset sets no reasoning or tool parser, so the smoke-test reply contains the model's thinking inline."]
+  },
+  mimo26: {
+    label: "MiMo-V2.6-Flash", hw: "4 GPUs (1 node, 4 &times; GH200)", rate: 4,
+    sub: `<code>XiaomiMiMo/MiMo-V2.6-Flash-RL</code>: MoE with 256 experts, 1M-token context, FP8 compute from mxfp4-stored weights, 178 GB.`,
+    bench: [
+      {c: 1,  req: 4,   tps: 230.21,  ttft: 98.96,  tpot: 3.97},
+      {c: 16, req: 64,  tps: 1415.61, ttft: 342.09, tpot: 9.99},
+      {c: 64, req: 256, tps: 2379.63, ttft: 614.80, tpot: 24.53}],
+    tiles: [["Single user, output speed", "230 tok/s", "time to first token 99 ms"],
+            ["Aggregate at 64 concurrent users", "2,380 tok/s", "on one node; each user sees ~41 tok/s"],
+            ["Concurrent 262k-token contexts held", "16.5\u00d7", "4.3M-token KV cache, as reported by vLLM"]],
+    cost: [{s: "1. Download weights (one-off)", h: 0.05}, {s: "2. Build container (shared)", h: 0.29}, {s: "3. Serve + benchmark, 4 GPUs", h: 0.57}],
+    caveats: ["Short prompts only. Nothing here measures a 250k-token prompt.",
+              "One working run, no repeats, so no error bars.",
+              "This is the -RL checkpoint. The vLLM recipe recommends the -MOPD variant because -RL can get stuck repeating tool calls in agentic use; that behaviour was not tested here.",
+              "Run on 4 GPUs, the recipe's minimum; 2 GPUs would not hold the 178 GB of weights plus KV cache."]
+  },
+  qwen38flash: {
+    label: "Qwen3.8-Flash-Next", hw: "4 GPUs (1 node, 4 &times; GH200)", rate: 4,
+    sub: `<code>Qwen/Qwen3.8-Flash-Next</code>: MoE, 125B total and 6B active parameters plus a 51B n-gram embedding table, 512 experts, bf16, 360 GB. The embedding table is offloaded to host RAM, leaving 61 GiB of weights per GPU.`,
+    bench: [
+      {c: 1,  req: 4,   tps: 156.01,  ttft: 176.43, tpot: 5.74},
+      {c: 16, req: 64,  tps: 1072.17, ttft: 722.80, tpot: 12.13},
+      {c: 64, req: 256, tps: 2660.23, ttft: 610.36, tpot: 21.70}],
+    tiles: [["Single user, output speed", "156 tok/s", "time to first token 176 ms"],
+            ["Aggregate at 64 concurrent users", "2,660 tok/s", "on one node; each user sees ~46 tok/s"],
+            ["Concurrent 262k-token contexts held", "6.4\u00d7", "1.67M-token KV cache, as reported by vLLM"]],
+    cost: [{s: "1. Download weights (one-off)", h: 0.08}, {s: "2. Build container (shared)", h: 0.29}, {s: "3. Serve + benchmark, 4 GPUs", h: 0.36}],
+    caveats: ["Short prompts only. The vendor recipe also notes a single 262k-token request was not tested.",
+              "One working run, no repeats, so no error bars.",
+              "Plain bf16 with no speculative decoding (MTP) and no FP8 KV cache; the vendor recipe's faster settings target B200 GPUs and were not tried on GH200.",
+              "Needs the large host RAM of a full 4-GPU allocation: the offloaded embedding table lives in CPU memory."]
   }
 };
 let current = new URLSearchParams(location.search).get("model");
