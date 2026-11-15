@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs INSIDE the container, once per node (launched by 03_serve_2node.sbatch).
-# Node 0 = API server + benchmarks. Node 1 = headless worker (data-parallel rank 1).
+# Node 0 = API server + benchmarks. Other nodes (NODES>1) = headless data-parallel workers.
 set -u
 source "$REPO_DIR/scripts/config.sh"
 source /host/adapt.sh              # expose host MPI/NCCL (Slingshot) inside the container
@@ -26,12 +26,15 @@ mkdir -p "$DG_JIT_CACHE_DIR" "$TRITON_CACHE_DIR" "$VLLM_CACHE_ROOT" \
 # minutes per rank). vLLM gives up after 600 s by default; the GLM-5.3 vLLM recipe uses 3600.
 export VLLM_ENGINE_READY_TIMEOUT_S=3600
 
-# --- Fix 4: tensor-parallel 4 x data-parallel 2 + expert parallel. Pipeline parallel
-# across nodes fails in vLLM 0.33 for this model (AssertionError in _run_layers).
-COMMON="$MODEL_DIR --served-model-name $SERVED_NAME \
-  --tensor-parallel-size 4 --data-parallel-size 2 --data-parallel-size-local 1 \
-  --data-parallel-address ${HEAD_NODE} --data-parallel-rpc-port 13345 \
-  --enable-expert-parallel \
+# --- Fix 4: layout comes from the model file. For the big MoE models it is tensor-parallel 4 per
+# node x data-parallel across nodes + expert parallel; pipeline parallel across nodes fails in
+# vLLM 0.33 for these models (AssertionError in _run_layers).
+DP=$((NODES * DP_PER_NODE))
+LAYOUT="--tensor-parallel-size $TP"
+[ "$DP" -gt 1 ] && LAYOUT="$LAYOUT --data-parallel-size $DP --data-parallel-size-local $DP_PER_NODE \
+  --data-parallel-address ${HEAD_NODE} --data-parallel-rpc-port 13345"
+[ "$EP" = "1" ] && LAYOUT="$LAYOUT --enable-expert-parallel"
+COMMON="$MODEL_DIR --served-model-name $SERVED_NAME $LAYOUT \
   --max-model-len $MAX_LEN --max-num-seqs 64 --gpu-memory-utilization 0.90 $VLLM_EXTRA_ARGS"
 
 mkdir -p "$REPO_DIR/logs"
@@ -67,6 +70,6 @@ if [ "$SLURM_NODEID" = "0" ]; then
   # prints the command to run.
   scancel "$SLURM_JOB_ID" 2>/dev/null || echo "scancel unavailable here - run: scancel $SLURM_JOB_ID"
 else
-  vllm serve $COMMON --headless --data-parallel-start-rank 1 \
+  vllm serve $COMMON --headless --data-parallel-start-rank $((SLURM_NODEID * DP_PER_NODE)) \
     > "$REPO_DIR/logs/vllm_worker_$SLURM_JOB_ID.log" 2>&1
 fi
