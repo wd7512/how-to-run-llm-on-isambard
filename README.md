@@ -10,14 +10,17 @@ measured speed, and what it costs you in GPU-hours. One switch picks the model.
 
 ## Models
 
-| `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours to reproduce | Status |
-|---|---|---:|---:|---:|---:|---|
-| `dsv41` (default) | DeepSeek-V4.1-Flash-1017 | 510 GB | 8 (2 nodes) | 47 / 1,422 | ~1.5 | worked, CUDA graphs on |
-| `glm53` | GLM-5.3-Flash | 328 GB | 8 (2 nodes) | 6.9 / 365 | ~2.3 | works in `--enforce-eager` only; CUDA graphs hang |
-| `qwen38` | Qwen3.8-27B | 55.6 GB | **1** | 57 / 1,399 | ~0.4 | worked |
-| `flint` | Flint 40B-A2.5B (BF16 base of the JANGH2 quant) | 79.6 GB | **2** | 196 / 3,986 | ~0.4 | worked |
-| `mimo26` | MiMo-V2.6-Flash-RL | 178 GB | 4 (1 node) | 230 / 2,380 | ~0.9 | worked |
-| `qwen38flash` | Qwen3.8-Flash-Next | 360 GB | 4 (1 node) | 156 / 2,660 | ~0.7 | worked |
+| `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours per 1M output tokens | GPU-hours to reproduce | Status |
+|---|---|---:|---:|---:|---:|---:|---|
+| `dsv41` (default) | DeepSeek-V4.1-Flash-1017 | 510 GB | 8 (2 nodes) | 47 / 1,422 | 1.56 | ~1.5 | worked, CUDA graphs on |
+| `glm53` | GLM-5.3-Flash | 328 GB | 8 (2 nodes) | 6.9 / 365 | 6.10 | ~2.3 | works in `--enforce-eager` only; CUDA graphs hang |
+| `qwen38` | Qwen3.8-27B | 55.6 GB | **1** | 57 / 1,399 | 0.20 | ~0.4 | worked |
+| `flint` | Flint 40B-A2.5B (BF16 base of the JANGH2 quant) | 79.6 GB | **2** | 196 / 3,986 | 0.14 | ~0.4 | worked |
+| `mimo26` | MiMo-V2.6-Flash-RL | 178 GB | 4 (1 node) | 230 / 2,380 | 0.47 | ~0.9 | worked |
+| `qwen38flash` | Qwen3.8-Flash-Next | 360 GB | 4 (1 node) | 156 / 2,660 | 0.42 | ~0.7 | worked |
+
+**GPU-hours per 1M output tokens** is the comparable cost: GPUs ÷ aggregate tok/s at 64 users ÷ 3,600 × 1,000,000
+(lower is cheaper; the [stats page](https://wd7512.github.io/how-to-run-llm-on-isambard/) plots it against single-user speed).
 
 Isambard-AI charges per GPU (1 GPU = 0.25 node-hours per hour), so the small models are requested with only
 the GPUs they need: set per model with `GPUS` in `scripts/models/<name>.env`. GPU-hours = download +

@@ -61,6 +61,8 @@ svg text { fill: var(--text-secondary); font: 12px system-ui, sans-serif; }
 svg text.val { fill: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
 svg .grid { stroke: var(--grid); stroke-width: 1; }
 svg .mark { fill: var(--series-1); }
+svg .dot { fill: var(--series-1); stroke: var(--surface-1); stroke-width: 2px; }
+svg .dot.cur { stroke: var(--text); stroke-width: 2.5px; }
 svg .mark.neutral { fill: var(--series-neutral); }
 svg .mark:hover { opacity: .8; }
 .legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); margin: 4px 0 8px; }
@@ -90,6 +92,13 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
   <div class="switch" role="tablist" aria-label="Model" id="switch"></div>
 
   <section class="tiles" id="tiles" aria-label="Headline numbers"></section>
+
+  <section class="card">
+    <h2>All models: speed vs cost</h2>
+    <p class="desc">Each dot is a model. Up is faster for one user. Left is cheaper: GPU-hours needed to generate one million output tokens with 64 users at once (GPUs &divide; aggregate tok/s &divide; 3,600 &times; 1,000,000, from the benchmark below: 1,024 input and 256 output tokens). Click a dot to open that model.</p>
+    <div id="c-scatter"></div>
+    <details><summary>Table view</summary><div class="tablewrap"><table id="t-scatter"></table></div></details>
+  </section>
 
   <section class="card">
     <h2>Aggregate output throughput</h2>
@@ -276,6 +285,42 @@ function columns(target, data, valueKey, unit, tipFn, decimals) {
   target.appendChild(svg);
 }
 
+// Scatter: x = GPU-hours per 1M output tokens at 64 users (log), y = single-user tok/s.
+function gpuHoursPerMTok(M) { return M.rate / (M.bench[2].tps * 3600) * 1e6; }
+function scatter() {
+  const keys = Object.keys(MODELS);
+  const pts = keys.map(k => ({k, label: MODELS[k].label, x: gpuHoursPerMTok(MODELS[k]), y: MODELS[k].bench[0].tps, gpus: MODELS[k].rate, agg: MODELS[k].bench[2].tps}));
+  const W = 480, H = 340, L = 48, R = 16, T = 16, B = 52;
+  const lo = Math.pow(10, Math.floor(Math.log10(Math.min(...pts.map(p => p.x)) * 0.8)));
+  const hi = Math.pow(10, Math.ceil(Math.log10(Math.max(...pts.map(p => p.x)) * 1.2)));
+  const ymax = Math.ceil(Math.max(...pts.map(p => p.y)) / 50) * 50;
+  const xs = v => L + (W - L - R) * (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo));
+  const ys = v => T + (H - T - B) * (1 - v / ymax);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Single-user speed against GPU-hours per million output tokens"});
+  for (let v = 0; v <= ymax; v += 50) {
+    el("line", {class: "grid", x1: L, x2: W - R, y1: ys(v), y2: ys(v)}, svg);
+    const t = el("text", {x: L - 8, y: ys(v) + 4, "text-anchor": "end"}, svg); t.textContent = fmt(v);
+  }
+  [0.1, 0.2, 0.5, 1, 2, 5, 10, 20].filter(v => v >= lo && v <= hi).forEach(v => {
+    el("line", {class: "grid", x1: xs(v), x2: xs(v), y1: T, y2: H - B}, svg);
+    const t = el("text", {x: xs(v), y: H - B + 18, "text-anchor": "middle"}, svg); t.textContent = v;
+  });
+  const xl = el("text", {x: (L + W - R) / 2, y: H - 8, "text-anchor": "middle"}, svg); xl.textContent = "GPU-hours per 1M output tokens (log scale)";
+  const yl = el("text", {x: 12, y: (T + H - B) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(T + H - B) / 2})`}, svg); yl.textContent = "Single-user tok/s";
+  pts.forEach(p => {
+    const cx = xs(p.x), cy = ys(p.y), cur = p.k === current, left = cx > W * 0.66;
+    const g = el("g", {style: "cursor:pointer"}, svg);
+    el("circle", {cx, cy, r: 7, class: "dot" + (cur ? " cur" : "")}, g);
+    const t = el("text", {class: "val", x: left ? cx - 12 : cx + 12, y: cy + 4, "text-anchor": left ? "end" : "start"}, g); t.textContent = p.label;
+    hover(g, `${p.label}: ${fmt(p.y, 0)} tok/s for one user; ${fmt(p.x, 2)} GPU-hours per 1M output tokens (${p.gpus} GPU${p.gpus > 1 ? "s" : ""}, ${fmt(p.agg, 0)} tok/s at 64 users)`);
+    g.addEventListener("click", () => { current = p.k; history.replaceState(null, "", "?model=" + current); render(); });
+  });
+  document.getElementById("c-scatter").appendChild(svg);
+  document.getElementById("t-scatter").innerHTML =
+    "<thead><tr><th>Model</th><th>GPUs</th><th>1-user tok/s</th><th>64-user tok/s</th><th>GPU-hours per 1M output tokens</th></tr></thead><tbody>" +
+    pts.map(p => `<tr><td>${p.label}</td><td>${p.gpus}</td><td>${fmt(p.y, 1)}</td><td>${fmt(p.agg, 0)}</td><td>${fmt(p.x, 2)}</td></tr>`).join("") + "</tbody>";
+}
+
 function render() {
   const M = MODELS[current]; bench = M.bench; cost = M.cost;
   document.title = M.label + " on Isambard-AI";
@@ -285,7 +330,7 @@ function render() {
   document.getElementById("cost-h").textContent = `What it costs you: about ${fmt(tot, 1)} GPU-hours to get running`;
   document.getElementById("cost-d").textContent = `GPU-hours for the three jobs in the guide, from Slurm accounting (1 GPU = 0.25 node-hours, so ${fmt(tot, 1)} GPU-hours = ${fmt(tot / 4, 1)} node-hours). Isambard charges per GPU, so fewer GPUs cost less. The download is one-off per model and the container is shared. Serving this model costs ${M.rate} GPU-hour${M.rate > 1 ? "s" : ""} per hour the job runs.`;
   document.getElementById("caveats").innerHTML = M.caveats.map(c => `<li>${c}</li>`).join("");
-  ["c-throughput", "c-peruser", "c-cost"].forEach(id => document.getElementById(id).innerHTML = "");
+  ["c-throughput", "c-peruser", "c-cost", "c-scatter"].forEach(id => document.getElementById(id).innerHTML = "");
   document.getElementById("switch").innerHTML = Object.keys(MODELS).map(k => `<button role="tab" data-k="${k}" aria-selected="${k === current}">${MODELS[k].label}</button>`).join("");
   document.querySelectorAll("#switch button").forEach(b => b.onclick = () => { current = b.dataset.k; history.replaceState(null, "", "?model=" + current); render(); });
 columns(document.getElementById("c-throughput"), bench, "tps", "", d =>
@@ -322,6 +367,7 @@ function costChart() {
     `<tr><td><strong>Total</strong></td><td><strong>${fmt(cost.reduce((a, d) => a + d.h, 0), 2)}</strong></td></tr></tbody>`;
 }
   costChart();
+  scatter();
 }
 render();
 </script>
