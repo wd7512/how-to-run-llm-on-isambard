@@ -104,7 +104,10 @@ try:
 except Exception as e:
     res["names_error"] = str(e)[:150]
 try:
-    from vllm.entrypoints.openai.cli_args import make_arg_parser
+    try:
+        from vllm.entrypoints.common.cli_args import make_arg_parser
+    except ImportError:
+        from vllm.entrypoints.openai.cli_args import make_arg_parser   # older vLLM
     from vllm.utils.argparse_utils import FlexibleArgumentParser
     p = make_arg_parser(FlexibleArgumentParser())
     p.parse_args(["model", "--tensor-parallel-size", os.environ["TP"], "--max-model-len", os.environ["MAX_LEN"]] + args)
