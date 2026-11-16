@@ -119,18 +119,18 @@ Environment variables set inside the container (all in `node_entry.sh`):
 ## 5. Results
 
 <!-- BEGIN:models-table -->
-| `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours to run the benchmark | GPU-hours to reproduce | Status |
-|---|---|---:|---:|---:|---:|---:|---|
-| `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 47 / 1,446 | 0.101 | ~1.37 | worked |
-| `glm53` | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 328 GB | 8 | 7.3 / 449 | 0.324 | ~2.14 | eager only |
-| `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,421 | 0.013 | ~0.39 | worked |
-| `flint` | [Flint 40B-A2.5B](https://huggingface.co/RecursiveSI/flint) | 79.6 GB | 2 | 194 / 3,983 | 0.009 | ~0.40 | worked |
-| `mimo26` | [MiMo-V2.6-Flash](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL) | 178 GB | 4 | 231 / 2,370 | 0.031 | ~0.90 | worked |
-| `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 154 / 2,647 | 0.028 | ~0.78 | worked |
-| `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,656 | 0.022 | ~0.51 | worked |
-| `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 207 / 2,600 | 0.007 | ~0.41 | worked |
-| `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 220 / 2,714 | 0.007 | ~0.37 | worked |
-| `nemotron35` | [Nemotron 3.5 Super VL](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16) | 248.9 GB | 4 | 201 / 1,769 | 0.041 | ~0.80 | worked |
+| `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours to run the benchmark | Vals Index | GPU-hours to reproduce | Status |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 47 / 1,446 | 0.101 | 61.26% | ~1.37 | worked |
+| `glm53` | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 328 GB | 8 | 7.3 / 449 | 0.324 | 50.86% | ~2.14 | eager only |
+| `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,421 | 0.013 | n/a | ~0.39 | worked |
+| `flint` | [Flint 40B-A2.5B](https://huggingface.co/RecursiveSI/flint) | 79.6 GB | 2 | 194 / 3,983 | 0.009 | n/a | ~0.40 | worked |
+| `mimo26` | [MiMo-V2.6-Flash](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL) | 178 GB | 4 | 231 / 2,370 | 0.031 | 54.83% | ~0.90 | worked |
+| `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 154 / 2,647 | 0.028 | n/a | ~0.78 | worked |
+| `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,656 | 0.022 | n/a | ~0.51 | worked |
+| `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 207 / 2,600 | 0.007 | n/a | ~0.41 | worked |
+| `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 220 / 2,714 | 0.007 | n/a | ~0.37 | worked |
+| `nemotron35` | [Nemotron 3.5 Super VL](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16) | 248.9 GB | 4 | 201 / 1,769 | 0.041 | 29.78% | ~0.80 | worked |
 <!-- END:models-table -->
 
 **GPU-hours to run the benchmark** is the comparable cost (section 8): the GPUs used x the time the 64-user run took, measured.

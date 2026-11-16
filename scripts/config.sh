@@ -20,5 +20,8 @@ export SIF="$SCRATCHDIR/containers/vllm-0.33.0-arm64.sif"
 # model's "up to date" check (scripts/confighash.py), so run.sh re-runs them.
 export RUN_VERSION=1
 
+# A model's file may set MODEL_IMAGE and MODEL_SIF to use a different container (e.g. a vendor-built image).
+[ -n "${MODEL_IMAGE:-}" ] && export IMAGE_REF="$MODEL_IMAGE" SIF="$SCRATCHDIR/containers/${MODEL_SIF:?set MODEL_SIF with MODEL_IMAGE}"
+
 export HF_VENV="$SCRATCHDIR/envs/hfdl"
 export HF_HOME="$SCRATCHDIR/hf"

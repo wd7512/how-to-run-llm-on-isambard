@@ -178,18 +178,20 @@ function costChart(target, steps) {
   target.appendChild(svg);
 }
 
-// Scatter: x = GPU-hours the benchmark run used (measured, log scale), y = single-user tok/s.
-function scatter(target, current) {
-  const pts = MODELS.map(m => ({k: m.key, label: m.label, x: m.test_gpuh, y: m.tok1, gpus: m.gpus, agg: m.tok64}));
+// Scatter: x = GPU-hours the benchmark run used (measured, log scale); y is chosen per chart.
+//   opts: {pts: [{k, label, x, y, tip}], yMax, yStep, yLabel, aria}
+function scatter(target, current, opts) {
+  const pts = opts.pts;
   const W = 480, H = 340, L = 48, R = 16, T = 16, B = 52;
   const TICKS = [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2];
-  const lo = [...TICKS].reverse().find(t => t <= Math.min(...pts.map(p => p.x)) * 0.8) || TICKS[0];
-  const hi = TICKS.find(t => t >= Math.max(...pts.map(p => p.x)) * 1.25) || TICKS[TICKS.length - 1];
-  const ymax = Math.ceil(Math.max(...pts.map(p => p.y)) / 50) * 50;
+  const allX = MODELS.map(m => m.test_gpuh);            // same x range on both charts so they line up
+  const lo = [...TICKS].reverse().find(t => t <= Math.min(...allX) * 0.8) || TICKS[0];
+  const hi = TICKS.find(t => t >= Math.max(...allX) * 1.25) || TICKS[TICKS.length - 1];
+  const ymax = opts.yMax;
   const xs = v => L + (W - L - R) * (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo));
   const ys = v => T + (H - T - B) * (1 - v / ymax);
-  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Single-user speed against GPU-hours per million output tokens"});
-  for (let v = 0; v <= ymax; v += 50) {
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.aria});
+  for (let v = 0; v <= ymax; v += opts.yStep) {
     el("line", {class: "grid", x1: L, x2: W - R, y1: ys(v), y2: ys(v)}, svg);
     el("text", {x: L - 8, y: ys(v) + 4, "text-anchor": "end"}, svg).textContent = fmt(v);
   }
@@ -198,10 +200,10 @@ function scatter(target, current) {
     el("text", {x: xs(v), y: H - B + 18, "text-anchor": "middle"}, svg).textContent = String(v);
   });
   el("text", {x: (L + W - R) / 2, y: H - 8, "text-anchor": "middle"}, svg).textContent = "GPU-hours to run the benchmark (log scale)";
-  el("text", {x: 12, y: (T + H - B) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(T + H - B) / 2})`}, svg).textContent = "Single-user tok/s";
+  el("text", {x: 12, y: (T + H - B) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(T + H - B) / 2})`}, svg).textContent = opts.yLabel;
   // Labels: place right of the dot, or left near the right edge; nudge apart if two labels would overlap.
   const placed = [];
-  pts.sort((a, b) => a.y - b.y).forEach(p => {
+  [...pts].sort((a, b) => a.y - b.y).forEach(p => {
     const cx = xs(p.x), cy = ys(p.y), left = cx > W * 0.62;
     let ly = cy + 4;
     for (const q of placed) if (Math.abs(q.ly - ly) < 14 && Math.abs(q.cx - cx) < 150) ly = q.ly - 14;
@@ -209,10 +211,19 @@ function scatter(target, current) {
     const g = el("g", {style: "cursor:pointer"}, svg);
     el("circle", {cx, cy, r: 7, class: "dot" + (p.k === current ? " cur" : "")}, g);
     el("text", {class: "val", x: left ? cx - 12 : cx + 12, y: ly, "text-anchor": left ? "end" : "start"}, g).textContent = p.label;
-    hover(g, `${p.label}: ${fmt(p.y, 0)} tok/s for one user; ${fmt(p.x, 3)} GPU-hours to run the benchmark (${p.gpus} GPU${p.gpus > 1 ? "s" : ""}, ${fmt(p.agg, 0)} tok/s at 64 users)`);
+    hover(g, p.tip);
     g.addEventListener("click", () => go(p.k));
   });
   target.appendChild(svg);
+}
+const gpuTxt = m => `${m.gpus} GPU${m.gpus > 1 ? "s" : ""}`;
+function speedPts() {
+  return MODELS.map(m => ({k: m.key, label: m.label, x: m.test_gpuh, y: m.tok1,
+    tip: `${m.label}: ${fmt(m.tok1, 0)} tok/s for one user; ${fmt(m.test_gpuh, 3)} GPU-hours to run the benchmark (${gpuTxt(m)}, ${fmt(m.tok64, 0)} tok/s at 64 users)`}));
+}
+function qualityPts() {
+  return MODELS.filter(m => m.vals).map(m => ({k: m.key, label: m.label, x: m.test_gpuh, y: m.vals.score,
+    tip: `${m.label}: Vals Index ${fmt(m.vals.score, 2)}% (listed as "${m.vals.vals_name}"); ${fmt(m.test_gpuh, 3)} GPU-hours to run the benchmark (${gpuTxt(m)})`}));
 }
 
 // ---- views ----------------------------------------------------------------
@@ -237,6 +248,12 @@ function overview() {
     <h2>Speed vs cost</h2>
     <p class="desc">Each dot is a model. Up is faster for one user. Left is cheaper: the GPU-hours the benchmark itself used, measured as GPUs &times; the time the 64-user run took. Every model runs the same test, so it compares them: ${TOK}; that is 256 requests, 262,144 input and 65,536 output tokens, 64 at a time. Click a dot to open that model.</p>
     <div id="c-scatter"></div>
+  </section>
+  <section class="card">
+    <h2>Quality vs cost</h2>
+    <p class="desc">Same cost axis, but up is better quality: the model's <a href="${SITE.vals.source}">Vals Index</a> score (v${esc(SITE.vals.version)}, as of ${esc(SITE.vals.as_of)}), which measures agentic performance on finance, coding, legal and tax tasks. These are <strong>third-party scores</strong> published by Vals AI for hosted models; we did not run that benchmark, and the precision they served may differ from ours.</p>
+    <div id="c-quality"></div>
+    <p class="desc" id="q-missing"></p>
   </section>
   <section class="card">
     <h2>All models</h2>
@@ -283,7 +300,10 @@ function overview() {
       <li>Repeatability: each model was run twice. Seven of nine agreed within about 4% (most within 1%) at every concurrency; DeepSeek (+14% at 16 users) and GLM (up to +23% at 64 users, eager mode) varied more, so treat the two-node numbers as roughly &plusmn;20%. The numbers shown are the final run.</li>
           </ul>
   </section>`;
-  scatter($("c-scatter"), null);
+  scatter($("c-scatter"), null, {pts: speedPts(), yMax: Math.ceil(Math.max(...MODELS.map(m => m.tok1)) / 50) * 50, yStep: 50, yLabel: "Single-user tok/s", aria: "Single-user speed against GPU-hours to run the benchmark"});
+  scatter($("c-quality"), null, {pts: qualityPts(), yMax: 80, yStep: 10, yLabel: "Vals Index score (%)", aria: "Vals Index score against GPU-hours to run the benchmark"});
+  const noVals = MODELS.filter(m => !m.vals).map(m => m.label);
+  $("q-missing").textContent = noVals.length ? "Not plotted, because Vals does not list them: " + noVals.join(", ") + "." : "";
   v.querySelectorAll("tr.row").forEach(r => r.addEventListener("click", () => go(r.dataset.k)));
 }
 
@@ -306,7 +326,7 @@ function detail(m) {
     <p class="desc">What the job actually ran, recorded by the run itself. Slurm request: <code>--nodes=${m.nodes} --gpus-per-node=${m.gpus_per_node} --time=${esc(m.time_cap)}</code>. Everything runs inside the container, started once per node:</p>
 <pre>module load brics/nccl brics/apptainer-multi-node   # Slingshot RDMA env for multi-node NCCL
 srun --kill-on-bad-exit=1 --export=ALL \\
-  apptainer exec --nv --bind $SCRATCHDIR --bind $REPO_DIR vllm-0.33.0-arm64.sif \\
+  apptainer exec --nv --bind $SCRATCHDIR --bind $REPO_DIR ${esc(m.sif)} \\
   scripts/node_entry.sh   # sets the environment below, then starts vLLM</pre>
     ${m.env && Object.keys(m.env).length ? `<p class="desc">Environment set inside the container:</p><pre>${esc(Object.entries(m.env).map(([k, v]) => k + "=" + v).join("\n"))}</pre>` : ""}
     ${m.serve_command ? `<p class="desc">${m.nodes > 1 ? "Head node (node 0), which also runs the benchmark" : "The server"}:</p><pre>${esc(fmtCmd(m.serve_command))}</pre>` : ""}
@@ -336,6 +356,7 @@ MODEL=${m.key} python3 scripts/collect_results.py   # after the serve job finish
     <p class="desc">${m.layout}. Weights ${load.weights_gib_per_gpu ? fmt(load.weights_gib_per_gpu, 1) + " GiB per GPU, " : ""}${load.load_seconds ? "loaded in about " + fmt(load.load_seconds) + " s. " : ""}${kv ? "KV cache " + fmt(kv) + " tokens, " + fmt(ctx, 1) + " concurrent 262k-token contexts." : ""}</p>
     <ul class="caveats">${[...m.caveats,
       "Short prompts only. Nothing here measures a 250k-token prompt.", m.repeat_pct ? `Run twice: the final run\'s output tok/s differed from the earlier run by ${m.repeat_pct.map(x => (x > 0 ? "+" : "") + x + "%").join(" / ")} at 1 / 16 / 64 users. The numbers shown are the final run.` : "One run, no repeats, so no error bars."].map(c => `<li>${c}</li>`).join("")}</ul>
+    <p class="meta">${m.vals ? `Vals Index v${esc(SITE.vals.version)} (third-party, ${esc(SITE.vals.as_of)}): <strong>${fmt(m.vals.score, 2)}%</strong>, listed as &ldquo;${esc(m.vals.vals_name)}&rdquo;.${m.vals.note ? " " + esc(m.vals.note) : ""}` : "No Vals Index score is listed for this model."}</p>
     <p class="meta">Revision <code>${esc(m.revision.slice(0, 12))}</code> &middot; ${prov}</p></section>`;
   columns($("c-throughput"), bench, "tps", d => `${d.c} concurrent: ${fmt(d.tps, 1)} tok/s aggregate`, m.tok1 < 20 ? 1 : 0);
   columns($("c-peruser"), bench.map(d => ({...d, pu: 1000 / d.tpot})), "pu", d => `${d.c} concurrent: ${fmt(d.pu, 1)} tok/s per user`, m.tok1 < 20 ? 1 : 0);

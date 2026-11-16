@@ -21,7 +21,7 @@ def canon(path, keep=None):
             continue
         if s.startswith(IGNORED):
             continue
-        if keep and not any(k in s for k in keep):
+        if keep and not s.startswith(keep):
             continue
         out.append(re.sub(r"\s+#.*$", "", s).strip())
     return "\n".join(out)
@@ -30,7 +30,7 @@ def canon(path, keep=None):
 def main():
     model = sys.argv[1] if len(sys.argv) > 1 else os.environ["MODEL"]
     parts = [canon(os.path.join(ROOT, "scripts", "models", model + ".env")),
-             canon(os.path.join(ROOT, "scripts", "config.sh"), keep=("IMAGE_REF", "RUN_VERSION"))]
+             canon(os.path.join(ROOT, "scripts", "config.sh"), keep=("export IMAGE_REF=", "export RUN_VERSION="))]
     print(hashlib.sha256("\n--\n".join(parts).encode()).hexdigest()[:16])
 
 

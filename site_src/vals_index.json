@@ -1,0 +1,39 @@
+{
+ "source": "https://www.vals.ai/benchmarks/vals_index",
+ "version": "2.2",
+ "as_of": "2026-11-15",
+ "measures": "Agentic model performance on finance, coding, legal and tax tasks, weighted by each sector's share of US GDP (finance 8.0, coding 5.6, legal 1.2, tax 0.5).",
+ "note": "Third-party scores published by Vals AI for hosted models; we did not run the Vals benchmark. The serving precision and provider Vals used is not known, and ours may differ.",
+ "scores": {
+  "dsv41": {
+   "score": 61.26,
+   "vals_name": "DeepSeek V4.1 Flash 1017"
+  },
+  "glm53": {
+   "score": 50.86,
+   "vals_name": "GLM 5.3 Flash"
+  },
+  "mimo26": {
+   "score": 54.83,
+   "vals_name": "MiMo V2.6 Flash",
+   "note": "Vals lists 'MiMo V2.6 Flash'; we serve the -RL checkpoint, which may not be the same weights."
+  },
+  "nemotron35": {
+   "score": 29.78,
+   "vals_name": "Nemotron 3.5 Super VL",
+   "note": "We serve the BF16 weights; the precision Vals used is not stated."
+  },
+  "minimax31": {
+   "score": 53.78,
+   "vals_name": "MiniMax-M3.1-Flash"
+  }
+ },
+ "not_listed": [
+  "qwen38",
+  "qwen38flash",
+  "flint",
+  "gemma31b",
+  "gemma26b",
+  "ornith35b"
+ ]
+}

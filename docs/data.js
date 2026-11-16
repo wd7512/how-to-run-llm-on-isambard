@@ -122,7 +122,13 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 1445.77,
-   "tok1": 47.14
+   "tok1": 47.14,
+   "vals": {
+    "score": 61.26,
+    "vals_name": "DeepSeek V4.1 Flash 1017"
+   },
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 2,
@@ -245,7 +251,13 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 449.38,
-   "tok1": 7.26
+   "tok1": 7.26,
+   "vals": {
+    "score": 50.86,
+    "vals_name": "GLM 5.3 Flash"
+   },
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 3,
@@ -367,7 +379,10 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 1421.49,
-   "tok1": 57.23
+   "tok1": 57.23,
+   "vals": null,
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 4,
@@ -491,7 +506,10 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 3982.67,
-   "tok1": 193.77
+   "tok1": 193.77,
+   "vals": null,
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 5,
@@ -614,7 +632,14 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 2369.59,
-   "tok1": 230.6
+   "tok1": 230.6,
+   "vals": {
+    "score": 54.83,
+    "vals_name": "MiMo V2.6 Flash",
+    "note": "Vals lists 'MiMo V2.6 Flash'; we serve the -RL checkpoint, which may not be the same weights."
+   },
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 6,
@@ -737,7 +762,10 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 2647.4,
-   "tok1": 154.07
+   "tok1": 154.07,
+   "vals": null,
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 7,
@@ -860,7 +888,10 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 1656.22,
-   "tok1": 80.12
+   "tok1": 80.12,
+   "vals": null,
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 8,
@@ -982,7 +1013,10 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 2599.91,
-   "tok1": 206.72
+   "tok1": 206.72,
+   "vals": null,
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 9,
@@ -1104,7 +1138,10 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 2714.46,
-   "tok1": 220.06
+   "tok1": 220.06,
+   "vals": null,
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   },
   {
    "order": 11,
@@ -1222,7 +1259,14 @@ window.SITE = {
     "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
    },
    "tok64": 1769.34,
-   "tok1": 200.9
+   "tok1": 200.9,
+   "vals": {
+    "score": 29.78,
+    "vals_name": "Nemotron 3.5 Super VL",
+    "note": "We serve the BF16 weights; the precision Vals used is not stated."
+   },
+   "sif": "vllm-0.33.0-arm64.sif",
+   "image_ref": null
   }
  ],
  "failed": [
@@ -1274,5 +1318,20 @@ window.SITE = {
    "key": "hy4preview",
    "gpu_hours": 0
   }
- ]
+ ],
+ "vals": {
+  "source": "https://www.vals.ai/benchmarks/vals_index",
+  "version": "2.2",
+  "as_of": "2026-11-15",
+  "measures": "Agentic model performance on finance, coding, legal and tax tasks, weighted by each sector's share of US GDP (finance 8.0, coding 5.6, legal 1.2, tax 0.5).",
+  "note": "Third-party scores published by Vals AI for hosted models; we did not run the Vals benchmark. The serving precision and provider Vals used is not known, and ours may differ.",
+  "not_listed": [
+   "qwen38",
+   "qwen38flash",
+   "flint",
+   "gemma31b",
+   "gemma26b",
+   "ornith35b"
+  ]
+ }
 };
