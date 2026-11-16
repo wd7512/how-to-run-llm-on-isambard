@@ -37,6 +37,8 @@ def main():
     repo, rev, model = E["MODEL_REPO"], E["MODEL_REVISION"], E["MODEL"]
     nodes, gpus, tp, dp, ep = int(E["NODES"]), int(E["GPUS"]), int(E["TP"]), int(E["DP_PER_NODE"]), E["EP"] == "1"
     print("preflight %s (%s @ %s)" % (model, repo, rev[:12]))
+    if E.get("KNOWN_BROKEN") and E.get("FORCE") != "1":
+        fail("known not to work: " + E["KNOWN_BROKEN"] + " (FORCE=1 to try anyway)")
 
     # 1. revision + size
     size = 0

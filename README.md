@@ -1,7 +1,7 @@
 # how-to-run-llm-on-isambard
 
 A practical guide to running large open-weight LLMs on Isambard-AI (NVIDIA GH200) with vLLM: **how to do it, what
-throughput to expect, and what node setup each model needs**, with nine models measured as worked examples.
+throughput to expect, and what node setup each model needs**, with ten models measured as worked examples.
 
 - **[Stats site](https://wd7512.github.io/how-to-run-llm-on-isambard/)**: an overview of all models, then a page per model with
   exactly how it was served (the Slurm request, container command, environment and `vllm serve` flags)
@@ -24,6 +24,7 @@ throughput to expect, and what node setup each model needs**, with nine models m
 | `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,656 | 0.022 | ~0.51 | worked |
 | `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 207 / 2,600 | 0.007 | ~0.41 | worked |
 | `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 220 / 2,714 | 0.007 | ~0.37 | worked |
+| `nemotron35` | [Nemotron 3.5 Super VL](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16) | 248.9 GB | 4 | 201 / 1,769 | 0.041 | ~0.80 | worked |
 <!-- END:models-table -->
 
 **GPU-hours to run the benchmark** is the comparable cost, and it is measured, not extrapolated: the GPUs used × the time

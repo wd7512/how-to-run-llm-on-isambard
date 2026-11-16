@@ -1105,6 +1105,174 @@ window.SITE = {
    },
    "tok64": 2714.46,
    "tok1": 220.06
+  },
+  {
+   "order": 11,
+   "label": "Nemotron 3.5 Super VL",
+   "hf": "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16",
+   "weights_gb": 248.9,
+   "summary": "Hybrid Mamba-Transformer MoE, 120B (12B active), BF16",
+   "status": "worked",
+   "description": "<code>nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16</code>: a hybrid Mamba-Transformer mixture-of-experts with 512 experts (about 12B of 120B parameters active), 1M-token context, BF16, 249 GB. A vision-language model; only text is measured here.",
+   "notes": [
+    "The BF16 repo is used, not the NVFP4 one: Hopper has no FP4 tensor cores.",
+    "Runs on one node of 4 GPUs (about 58 GiB of weights per GPU).",
+    "Uses the model card's parsers (<code>nemotron_v3</code> reasoning, <code>qwen3_coder</code> tools) and <code>--max-num-seqs 32</code>."
+   ],
+   "caveats": [
+    "Vision-language model benchmarked on text only; image and video input are not measured."
+   ],
+   "key": "nemotron35",
+   "nodes": 1,
+   "gpus_per_node": 4,
+   "gpus": 4,
+   "time_cap": "00:15:00",
+   "revision": "fb0ee0bc6b3f70342afd8d84cb80dbadbaa8a1fe",
+   "date": "2026-11-16",
+   "layout": "TP4 x DP1, 1 node(s)",
+   "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
+   },
+   "workload": {
+    "tool": "vllm bench serve",
+    "dataset": "random",
+    "input_tokens_per_request": 1024,
+    "output_tokens_per_request": 256,
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
+   },
+   "load": {
+    "weights_gib_per_gpu": 57.55,
+    "load_seconds": 91,
+    "kv_cache_tokens": 4402827,
+    "max_concurrency_at_262144_ctx": 16.8
+   },
+   "results": [
+    {
+     "concurrency": 1,
+     "requests": 4,
+     "failed": 0,
+     "output_tok_s": 200.9,
+     "mean_ttft_ms": 93.88,
+     "mean_tpot_ms": 4.63,
+     "total_input_tokens": 4096,
+     "total_output_tokens": 1024,
+     "duration_s": 5.1
+    },
+    {
+     "concurrency": 16,
+     "requests": 64,
+     "failed": 0,
+     "output_tok_s": 1147.97,
+     "mean_ttft_ms": 524.42,
+     "mean_tpot_ms": 11.92,
+     "total_input_tokens": 65536,
+     "total_output_tokens": 16384,
+     "duration_s": 14.3
+    },
+    {
+     "concurrency": 64,
+     "requests": 256,
+     "failed": 0,
+     "output_tok_s": 1769.34,
+     "mean_ttft_ms": 4430.65,
+     "mean_tpot_ms": 16.74,
+     "total_input_tokens": 262145,
+     "total_output_tokens": 65536,
+     "duration_s": 37.0
+    }
+   ],
+   "cost_metric": {
+    "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
+    "run_requests": 256,
+    "run_input_tokens": 262145,
+    "run_output_tokens": 65536,
+    "run_duration_s": 37.0,
+    "gpus": 4,
+    "run_gpu_hours": 0.0411,
+    "gpu_hours_per_1m_output_tokens": 0.628
+   },
+   "gpu_hours": {
+    "download": 0.13,
+    "build": 0.29,
+    "serve": 0.379,
+    "total": 0.8,
+    "notes": [
+     "container build cost is the measured shared build (this run reused the image)"
+    ]
+   },
+   "provenance": {},
+   "test_gpuh": 0.0411,
+   "test_s": 37.0,
+   "vllm_args": "--trust-remote-code --async-scheduling --max-num-seqs 32 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3",
+   "repeat_pct": null,
+   "serve_command": "vllm serve <model-dir> --served-model-name nemotron35 --tensor-parallel-size 4 --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --trust-remote-code --async-scheduling --max-num-seqs 32 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3 --port 8000",
+   "worker_command": null,
+   "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+   },
+   "tok64": 1769.34,
+   "tok1": 200.9
+  }
+ ],
+ "failed": [
+  {
+   "order": 90,
+   "label": "MiniMax-M3.1-Flash",
+   "hf": "MiniMaxAI/MiniMax-M3.1-Flash",
+   "weights_gb": 252.4,
+   "summary": "Sparse MoE, mxfp8 + NVFP4 experts: failed to load on vLLM 0.33.0",
+   "status": "did not work",
+   "description": "<code>MiniMaxAI/MiniMax-M3.1-Flash</code>: sparse mixture-of-experts with 128 experts (4 active), 1M-token context, 252 GB on disk. Needs 2 nodes (8 GPUs): on one node it runs out of memory loading the weights.",
+   "notes": [
+    "One node (4 GPUs, tensor-parallel 4) <strong>failed</strong>: CUDA out of memory while allocating weights, at 92 GiB per GPU and still allocating. vLLM selects its MXFP8 Marlin MoE path for this checkpoint (<code>Using 'MARLIN' MxFp8 MoE backend</code>) and allocates the experts at 1 byte per parameter, much more than the 252 GB on disk. The preflight memory estimate (59 GiB per GPU) is based on file size, so it could not predict this.",
+    "The working layout is 2 nodes: tensor-parallel 4 per node x data-parallel 2 + expert-parallel, which shards the experts across all 8 GPUs.",
+    "Needs vLLM 0.33 or newer (the image has 0.33.0).",
+    "<code>--block-size 128</code> is mandatory for the sparse attention index cache (a mismatch fails with \"No common block size\").",
+    "<code>--moe-backend marlin</code> is the recipe's Hopper setting (Hopper has no FP4 tensor cores).",
+    "The vLLM recipe targets 8 x B300 GPUs with NVFP4 KV cache and speculative decoding; none of that is used here."
+   ],
+   "caveats": [],
+   "attempts": [
+    {
+     "layout": "1 node, 4 GPUs, tensor-parallel 4",
+     "result": "CUDA out of memory while allocating weights (92 GiB per GPU and still allocating): vLLM chose its MXFP8 Marlin MoE path and allocates experts at 1 byte per parameter.",
+     "gpu_hours": 0.12
+    },
+    {
+     "layout": "2 nodes, 8 GPUs, TP 4 x DP 2 + expert-parallel",
+     "result": "RuntimeError: the size of tensor a (192) must match the size of tensor b (384): the checkpoint's packed 4-bit expert weights do not fit the 8-bit layer vLLM created for them. A layout change cannot fix this.",
+     "gpu_hours": 0.2
+    }
+   ],
+   "next": "The model card's vLLM recipe uses a dedicated image (<code>vllm/vllm-openai:minimax-m31-flash</code>) and says vLLM 0.33.0 was not yet released, so the stable 0.33.0 image used here probably lacks the fix. Untried: building that image.",
+   "key": "minimax31",
+   "gpu_hours": 0.32
+  },
+  {
+   "order": 91,
+   "label": "Hy4-preview",
+   "hf": "tencent/Hy4-preview",
+   "weights_gb": 1560,
+   "status": "not attempted",
+   "summary": "1.56 TB BF16 (814 GB FP8): needs 4+ nodes",
+   "description": "<code>tencent/Hy4-preview</code>: 1.56 TB in BF16 (the recommended <code>-FP8</code> variant is 814 GB). Not run.",
+   "attempts": [],
+   "next": "The FP8 weights alone (758 GiB) exceed the 768 GiB of two nodes, so the realistic minimum is 4 nodes (16 GPUs, 256 experts divide evenly), at about 4 GPU-hours per 15 minutes. Its vLLM recipe targets B300 and AMD GPUs and does not say whether MXFP8 works on Hopper.",
+   "notes": [],
+   "caveats": [],
+   "key": "hy4preview",
+   "gpu_hours": 0
   }
  ]
 };

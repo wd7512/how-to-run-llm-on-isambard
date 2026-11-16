@@ -95,6 +95,7 @@ code { font-size: 0.92em; }
 .meta { font-size: 13px; color: var(--text-muted); }
 .status { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--grid); color: var(--text-secondary); vertical-align: 2px; margin-left: 6px; }
 table.cmp td:last-child, table.cmp th:last-child { text-align: left; }
+table.fit th:nth-child(2), table.fit td:nth-child(2) { text-align: left; }
 table.cmp tr.row { cursor: pointer; }
 table.cmp tr.row:hover td { background: var(--surface-0); }
 .notes li { color: var(--text-secondary); margin-bottom: 6px; }
@@ -252,7 +253,7 @@ function overview() {
   <section class="card">
     <h2>What fits where</h2>
     <p class="desc">Measured setups, smallest first. Isambard charges per GPU, so use the fewest that fit: weights per GPU plus enough KV cache for the context you need.</p>
-    <div class="tablewrap"><table class="cmp">
+    <div class="tablewrap"><table class="cmp fit">
       <thead><tr><th>GPUs</th><th>Models that ran on this setup</th><th>Weights per GPU</th><th>262k contexts held</th></tr></thead>
       <tbody>${[...new Set(MODELS.map(m => m.gpus))].sort((a, b) => a - b).map(g => MODELS.filter(m => m.gpus === g).map((m, i, arr) => `<tr class="row" data-k="${m.key}"><td>${i === 0 ? g + (g > 4 ? " (" + m.nodes + " nodes)" : "") : ""}</td><td>${esc(m.label)}</td><td>${fmt(m.load.weights_gib_per_gpu || 0)} GiB</td><td>${fmt(m.load.max_concurrency_at_262144_ctx || 0, 1)}</td></tr>`).join("")).join("")}</tbody>
     </table></div>
@@ -268,6 +269,13 @@ function overview() {
     </ol>
     <p class="desc"><a href="${REPO}/blob/main/HOWTO.md">The full guide: Isambard-AI facts, choosing a node setup, what every flag means, troubleshooting &rarr;</a> &middot; <a href="${REPO}">the scripts (a worked example) &rarr;</a></p>
   </section>
+  ${(SITE.failed || []).length ? `<section class="card">
+    <h2>Tried and did not work</h2>
+    <p class="desc">Models that failed with the vLLM image used here, or would not fit. Each failure cost GPU-hours, so the scripts now refuse to re-run a model marked as known broken.</p>
+    ${SITE.failed.map(f => `<p style="margin:12px 0 4px"><strong>${esc(f.label)}</strong> <span class="status">${esc(f.status)}</span> <span class="meta">${fmt(f.weights_gb, 0)} GB${f.gpu_hours ? " &middot; " + fmt(f.gpu_hours, 2) + " GPU-hours spent" : ""}</span></p>
+      ${f.attempts.length ? `<ul class="notes">${f.attempts.map(x => `<li><strong>${esc(x.layout)}:</strong> ${esc(x.result)}</li>`).join("")}</ul>` : ""}
+      <p class="desc">${f.next}</p>`).join("")}
+  </section>` : ""}
   <section class="card">
     <h2>Caveats</h2>
     <ul class="caveats">

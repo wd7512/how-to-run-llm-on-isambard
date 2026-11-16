@@ -84,6 +84,7 @@ What fit where (measured):
 | 2 | 1 | [Gemma 4 31B](#gemma31b) | 30 GiB | 3.2 | TP2 x DP1, 1 node(s) |
 | 4 | 1 | [Qwen3.8-Flash-Next](#qwen38flash) | 61 GiB | 6.4 | TP4 x DP1 + expert-parallel, 1 node(s) |
 | 4 | 1 | [MiMo-V2.6-Flash](#mimo26) | 42 GiB | 16.5 | TP4 x DP1, 1 node(s) |
+| 4 | 1 | [Nemotron 3.5 Super VL](#nemotron35) | 58 GiB | 16.8 | TP4 x DP1, 1 node(s) |
 | 8 | 2 | [DeepSeek-V4.1-Flash](#dsv41) | 39 GiB | 48.5 | TP4 x DP2 + expert-parallel, 2 node(s) |
 | 8 | 2 | [GLM-5.3-Flash](#glm53) | 42 GiB | 13.2 | TP4 x DP2 + expert-parallel, 2 node(s) |
 <!-- END:fit-table -->
@@ -129,6 +130,7 @@ Environment variables set inside the container (all in `node_entry.sh`):
 | `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,656 | 0.022 | ~0.51 | worked |
 | `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 207 / 2,600 | 0.007 | ~0.41 | worked |
 | `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 220 / 2,714 | 0.007 | ~0.37 | worked |
+| `nemotron35` | [Nemotron 3.5 Super VL](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16) | 248.9 GB | 4 | 201 / 1,769 | 0.041 | ~0.80 | worked |
 <!-- END:models-table -->
 
 **GPU-hours to run the benchmark** is the comparable cost (section 8): the GPUs used x the time the 64-user run took, measured.
@@ -429,7 +431,63 @@ Measured: 220.1 output tok/s for one user, 2,714 at 64 users; **0.007 GPU-hours 
 - It is a reasoning model: the 64-token smoke-test reply is all thinking (returned in the `reasoning` field, empty `content`), which is expected and does not affect the benchmark.
 - One GPU is enough: 65.5 GiB of weights leave a KV cache that holds about 3.4 full 262k-token contexts.
 
+### nemotron35
+
+**Nemotron 3.5 Super VL** ([nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16), revision `fb0ee0bc6b3f`). `nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16`: a hybrid Mamba-Transformer mixture-of-experts with 512 experts (about 12B of 120B parameters active), 1M-token context, BF16, 249 GB. A vision-language model; only text is measured here.
+
+```bash
+MODEL=nemotron35 bash scripts/run.sh               # 1 node(s) x 4 GPU(s), time cap 00:15:00
+MODEL=nemotron35 python3 scripts/collect_results.py   # when the serve job has finished
+```
+
+What the head node ran (recorded by the run):
+
+```bash
+vllm serve <model-dir> \
+  --served-model-name nemotron35 \
+  --tensor-parallel-size 4 \
+  --max-model-len 262144 \
+  --max-num-seqs 64 \
+  --gpu-memory-utilization 0.90 \
+  --trust-remote-code \
+  --async-scheduling \
+  --max-num-seqs 32 \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_coder \
+  --reasoning-parser nemotron_v3 \
+  --port 8000
+```
+
+Measured: 200.9 output tok/s for one user, 1,769 at 64 users; **0.041 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,145 input / 65,536 output tokens, 37 s on 4 GPU(s)); ~0.80 GPU-hours to reproduce. Layout: TP4 x DP1, 1 node(s).
+
+- The BF16 repo is used, not the NVFP4 one: Hopper has no FP4 tensor cores.
+- Runs on one node of 4 GPUs (about 58 GiB of weights per GPU).
+- Uses the model card's parsers (`nemotron_v3` reasoning, `qwen3_coder` tools) and `--max-num-seqs 32`.
+
 <!-- END:model-sections -->
+
+## 6b. Tried and did not work
+
+Models that failed on Isambard-AI with the vLLM image used here, or that would not fit, and what we learned. Each failure cost
+GPU-hours, which is why the scripts now refuse to re-run a model marked as known broken.
+
+<!-- BEGIN:failed-models -->
+### minimax31: MiniMax-M3.1-Flash (did not work)
+
+[MiniMaxAI/MiniMax-M3.1-Flash](https://huggingface.co/MiniMaxAI/MiniMax-M3.1-Flash), 252.4 GB. `MiniMaxAI/MiniMax-M3.1-Flash`: sparse mixture-of-experts with 128 experts (4 active), 1M-token context, 252 GB on disk. Needs 2 nodes (8 GPUs): on one node it runs out of memory loading the weights.
+
+- **1 node, 4 GPUs, tensor-parallel 4** (0.12 GPU-hours): CUDA out of memory while allocating weights (92 GiB per GPU and still allocating): vLLM chose its MXFP8 Marlin MoE path and allocates experts at 1 byte per parameter.
+- **2 nodes, 8 GPUs, TP 4 x DP 2 + expert-parallel** (0.20 GPU-hours): RuntimeError: the size of tensor a (192) must match the size of tensor b (384): the checkpoint's packed 4-bit expert weights do not fit the 8-bit layer vLLM created for them. A layout change cannot fix this.
+
+What next: The model card's vLLM recipe uses a dedicated image (`vllm/vllm-openai:minimax-m31-flash`) and says vLLM 0.33.0 was not yet released, so the stable 0.33.0 image used here probably lacks the fix. Untried: building that image.
+
+### hy4preview: Hy4-preview (not attempted)
+
+[tencent/Hy4-preview](https://huggingface.co/tencent/Hy4-preview), 1560 GB. `tencent/Hy4-preview`: 1.56 TB in BF16 (the recommended `-FP8` variant is 814 GB). Not run.
+
+What next: The FP8 weights alone (758 GiB) exceed the 768 GiB of two nodes, so the realistic minimum is 4 nodes (16 GPUs, 256 experts divide evenly), at about 4 GPU-hours per 15 minutes. Its vLLM recipe targets B300 and AMD GPUs and does not say whether MXFP8 works on Hopper.
+
+<!-- END:failed-models -->
 
 ## 7. The worked example: this repo's scripts
 

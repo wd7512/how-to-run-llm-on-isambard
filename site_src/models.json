@@ -152,12 +152,12 @@
   "caveats": []
  },
  "minimax31": {
-  "order": 10,
+  "order": 90,
   "label": "MiniMax-M3.1-Flash",
   "hf": "MiniMaxAI/MiniMax-M3.1-Flash",
   "weights_gb": 252.4,
-  "summary": "Sparse MoE, 128 experts (4 active), mxfp8 + NVFP4 experts",
-  "status": "worked",
+  "summary": "Sparse MoE, mxfp8 + NVFP4 experts: failed to load on vLLM 0.33.0",
+  "status": "did not work",
   "description": "<code>MiniMaxAI/MiniMax-M3.1-Flash</code>: sparse mixture-of-experts with 128 experts (4 active), 1M-token context, 252 GB on disk. Needs 2 nodes (8 GPUs): on one node it runs out of memory loading the weights.",
   "notes": [
    "One node (4 GPUs, tensor-parallel 4) <strong>failed</strong>: CUDA out of memory while allocating weights, at 92 GiB per GPU and still allocating. vLLM selects its MXFP8 Marlin MoE path for this checkpoint (<code>Using 'MARLIN' MxFp8 MoE backend</code>) and allocates the experts at 1 byte per parameter, much more than the 252 GB on disk. The preflight memory estimate (59 GiB per GPU) is based on file size, so it could not predict this.",
@@ -167,7 +167,20 @@
    "<code>--moe-backend marlin</code> is the recipe's Hopper setting (Hopper has no FP4 tensor cores).",
    "The vLLM recipe targets 8 x B300 GPUs with NVFP4 KV cache and speculative decoding; none of that is used here."
   ],
-  "caveats": []
+  "caveats": [],
+  "attempts": [
+   {
+    "layout": "1 node, 4 GPUs, tensor-parallel 4",
+    "result": "CUDA out of memory while allocating weights (92 GiB per GPU and still allocating): vLLM chose its MXFP8 Marlin MoE path and allocates experts at 1 byte per parameter.",
+    "gpu_hours": 0.12
+   },
+   {
+    "layout": "2 nodes, 8 GPUs, TP 4 x DP 2 + expert-parallel",
+    "result": "RuntimeError: the size of tensor a (192) must match the size of tensor b (384): the checkpoint's packed 4-bit expert weights do not fit the 8-bit layer vLLM created for them. A layout change cannot fix this.",
+    "gpu_hours": 0.2
+   }
+  ],
+  "next": "The model card's vLLM recipe uses a dedicated image (<code>vllm/vllm-openai:minimax-m31-flash</code>) and says vLLM 0.33.0 was not yet released, so the stable 0.33.0 image used here probably lacks the fix. Untried: building that image."
  },
  "nemotron35": {
   "order": 11,
@@ -185,5 +198,18 @@
   "caveats": [
    "Vision-language model benchmarked on text only; image and video input are not measured."
   ]
+ },
+ "hy4preview": {
+  "order": 91,
+  "label": "Hy4-preview",
+  "hf": "tencent/Hy4-preview",
+  "weights_gb": 1560,
+  "status": "not attempted",
+  "summary": "1.56 TB BF16 (814 GB FP8): needs 4+ nodes",
+  "description": "<code>tencent/Hy4-preview</code>: 1.56 TB in BF16 (the recommended <code>-FP8</code> variant is 814 GB). Not run.",
+  "attempts": [],
+  "next": "The FP8 weights alone (758 GiB) exceed the 768 GiB of two nodes, so the realistic minimum is 4 nodes (16 GPUs, 256 experts divide evenly), at about 4 GPU-hours per 15 minutes. Its vLLM recipe targets B300 and AMD GPUs and does not say whether MXFP8 works on Hopper.",
+  "notes": [],
+  "caveats": []
  }
 }
