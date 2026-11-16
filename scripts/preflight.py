@@ -118,7 +118,8 @@ except Exception as e:
     res["flags_error"] = str(e)[:150]
 print("PREFLIGHT_JSON " + json.dumps(res))
 '''
-        r = subprocess.run(["apptainer", "exec", sif, "python3", "-c", code], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        r = subprocess.run(["apptainer", "exec", sif, "python3", "-c", code], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True,
+                           env=dict(E, VLLM_TARGET_DEVICE="cuda"))   # no GPU on the login node: skip device probing
         line = [l for l in r.stdout.splitlines() if l.startswith("PREFLIGHT_JSON ")]
         if not line: warn("could not run the vLLM checks in the container: " + (r.stderr.strip().splitlines() or ["?"])[-1][:200])
         else:
