@@ -21,7 +21,7 @@ window.SITE = {
    "nodes": 2,
    "gpus_per_node": 4,
    "gpus": 8,
-   "time_cap": "00:40:00",
+   "time_cap": "00:18:00",
    "revision": "08c8657f02291e11b6f6b63e0e16014f8e748518",
    "date": "2026-11-15",
    "layout": "TP4 x DP2 + expert-parallel, 2 node(s)",
@@ -101,7 +101,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 1.537,
+   "test_gpuh": 0.1007,
+   "test_s": 45.3,
    "vllm_args": "--trust-remote-code --tool-call-parser deepseek_v41 --enable-auto-tool-choice --reasoning-parser deepseek_v41",
    "repeat_pct": [
     -1.4,
@@ -143,7 +144,7 @@ window.SITE = {
    "nodes": 2,
    "gpus_per_node": 4,
    "gpus": 8,
-   "time_cap": "00:40:00",
+   "time_cap": "00:33:00",
    "revision": "46a050bec13002ad29ee795c16e61cf4fa3c4a9c",
    "date": "2026-11-15",
    "layout": "TP4 x DP2 + expert-parallel, 2 node(s)",
@@ -223,7 +224,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 4.945,
+   "test_gpuh": 0.324,
+   "test_s": 145.8,
    "vllm_args": "--tool-call-parser glm47 --enable-auto-tool-choice --reasoning-parser glm47 --disable-flashinfer-autotune --enforce-eager",
    "repeat_pct": [
     6.0,
@@ -264,7 +266,7 @@ window.SITE = {
    "nodes": 1,
    "gpus_per_node": 1,
    "gpus": 1,
-   "time_cap": "00:30:00",
+   "time_cap": "00:11:00",
    "revision": "37561816e66b5b9153b1b64c10968c18c1e6f4a0",
    "date": "2026-11-15",
    "layout": "TP1 x DP1, 1 node(s)",
@@ -344,7 +346,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 0.195,
+   "test_gpuh": 0.0128,
+   "test_s": 46.1,
    "vllm_args": "--enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 --mm-encoder-tp-mode data",
    "repeat_pct": [
     -0.2,
@@ -387,7 +390,7 @@ window.SITE = {
    "nodes": 1,
    "gpus_per_node": 2,
    "gpus": 2,
-   "time_cap": "00:30:00",
+   "time_cap": "00:10:00",
    "revision": "2a247be0c0aec895ccb0ac7ca92229ec6df37288",
    "date": "2026-11-15",
    "layout": "TP2 x DP1 + expert-parallel, 1 node(s)",
@@ -467,7 +470,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 0.139,
+   "test_gpuh": 0.0092,
+   "test_s": 16.5,
    "vllm_args": "--attention-backend FLASHINFER",
    "repeat_pct": [
     -1.3,
@@ -509,7 +513,7 @@ window.SITE = {
    "nodes": 1,
    "gpus_per_node": 4,
    "gpus": 4,
-   "time_cap": "00:30:00",
+   "time_cap": "00:21:00",
    "revision": "f657ba2f7d24c9adc5730675baaa2d34de878a49",
    "date": "2026-11-15",
    "layout": "TP4 x DP1, 1 node(s)",
@@ -589,7 +593,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 0.469,
+   "test_gpuh": 0.0308,
+   "test_s": 27.7,
    "vllm_args": "--trust-remote-code --generation-config vllm --tool-call-parser mimo --enable-auto-tool-choice --reasoning-parser mimo",
    "repeat_pct": [
     0.2,
@@ -631,7 +636,7 @@ window.SITE = {
    "nodes": 1,
    "gpus_per_node": 4,
    "gpus": 4,
-   "time_cap": "00:30:00",
+   "time_cap": "00:16:00",
    "revision": "812d96e10a0dd82b69d749e68693698cf6c36daa",
    "date": "2026-11-15",
    "layout": "TP4 x DP1 + expert-parallel, 1 node(s)",
@@ -711,7 +716,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 0.42,
+   "test_gpuh": 0.0276,
+   "test_s": 24.8,
    "vllm_args": "--max-num-seqs 256 --enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3",
    "repeat_pct": [
     -1.2,
@@ -754,7 +760,7 @@ window.SITE = {
    "nodes": 1,
    "gpus_per_node": 2,
    "gpus": 2,
-   "time_cap": "00:30:00",
+   "time_cap": "00:12:00",
    "revision": "5bbc2fb1c1b2c611d06e3d9f23c170ba21659d89",
    "date": "2026-11-15",
    "layout": "TP2 x DP1, 1 node(s)",
@@ -833,7 +839,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 0.335,
+   "test_gpuh": 0.022,
+   "test_s": 39.6,
    "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
    "repeat_pct": [
     -0.1,
@@ -875,7 +882,7 @@ window.SITE = {
    "nodes": 1,
    "gpus_per_node": 1,
    "gpus": 1,
-   "time_cap": "00:30:00",
+   "time_cap": "00:10:00",
    "revision": "24548b62aa021d562695c04aaf7758a1ea47990b",
    "date": "2026-11-15",
    "layout": "TP1 x DP1, 1 node(s)",
@@ -954,7 +961,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 0.107,
+   "test_gpuh": 0.007,
+   "test_s": 25.2,
    "vllm_args": "--reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice",
    "repeat_pct": [
     -0.6,
@@ -995,7 +1003,7 @@ window.SITE = {
    "nodes": 1,
    "gpus_per_node": 1,
    "gpus": 1,
-   "time_cap": "00:30:00",
+   "time_cap": "00:10:00",
    "revision": "5df2ed3f675c7beaa490328cc70bb573b65fb660",
    "date": "2026-11-15",
    "layout": "TP1 x DP1, 1 node(s)",
@@ -1075,7 +1083,8 @@ window.SITE = {
     ]
    },
    "provenance": {},
-   "gph1m": 0.102,
+   "test_gpuh": 0.0067,
+   "test_s": 24.1,
    "vllm_args": "--enable-prefix-caching --enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --trust-remote-code",
    "repeat_pct": [
     1.2,

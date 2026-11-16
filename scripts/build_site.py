@@ -39,7 +39,7 @@ def load():
                            time_cap=e["TIME_LIMIT"], revision=r.get("revision", e.get("MODEL_REVISION")), date=r["date"],
                            layout=r["layout"], software=r["software"], workload=r["workload"], load=r["load"], results=r["results"],
                            cost_metric=cm, gpu_hours=r["gpu_hours"], provenance=r.get("provenance", {}),
-                           gph1m=cm["gpu_hours_per_1m_output_tokens"], vllm_args=e.get("VLLM_EXTRA_ARGS", ""),
+                           test_gpuh=cm["run_gpu_hours"], test_s=cm["run_duration_s"], vllm_args=e.get("VLLM_EXTRA_ARGS", ""),
                            repeat_pct=[round((n["output_tok_s"] / o - 1) * 100, 1) for n, o in zip(r["results"], r["previous_run"]["output_tok_s"])] if r.get("previous_run") else None,
                            serve_command=r.get("serve_command"), worker_command=r.get("worker_command"), env=r.get("env", {}),
                            tok64=top["output_tok_s"], tok1=r["results"][0]["output_tok_s"]))
@@ -51,11 +51,11 @@ def fmt(n, d=0):
 
 
 def table_md(models):
-    rows = ["| `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours per 1M output tokens | GPU-hours to reproduce | Status |",
+    rows = ["| `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours to run the benchmark | GPU-hours to reproduce | Status |",
             "|---|---|---:|---:|---:|---:|---:|---|"]
     for m in models:
         rows.append(f"| `{m['key']}` | [{m['label']}](https://huggingface.co/{m['hf']}) | {m['weights_gb']:g} GB | {m['gpus']} | "
-                    f"{fmt(m['tok1'], 0 if m['tok1'] >= 10 else 1)} / {fmt(m['tok64'])} | {m['gph1m']:.2f} | ~{m['gpu_hours']['total']:.2f} | {m['status']} |")
+                    f"{fmt(m['tok1'], 0 if m['tok1'] >= 10 else 1)} / {fmt(m['tok64'])} | {m['test_gpuh']:.3f} | ~{m['gpu_hours']['total']:.2f} | {m['status']} |")
     return "\n".join(rows)
 
 
@@ -73,8 +73,8 @@ def sections_md(models):
             cmd = re.sub(r" (--[a-z0-9.-]+)", r" \\\n  \1", m["serve_command"])
             out.append("What the head node ran (recorded by the run):\n\n```bash\n" + cmd + "\n```\n")
         out.append(f"Measured: {fmt(m['tok1'], 1)} output tok/s for one user, {fmt(m['tok64'])} at 64 users; "
-                   f"**{m['gph1m']:.2f} GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, "
-                   f"64-user run = {cm['run_input_tokens']:,} input / {cm['run_output_tokens']:,} output tokens); "
+                   f"**{m['test_gpuh']:.3f} GPU-hours to run the benchmark** (the 64-user run: {cm['run_requests']} requests of 1,024 input + 256 output tokens "
+                   f"= {cm['run_input_tokens']:,} input / {cm['run_output_tokens']:,} output tokens, {m['test_s']:.0f} s on {m['gpus']} GPU(s)); "
                    f"~{m['gpu_hours']['total']:.2f} GPU-hours to reproduce. Layout: {m['layout']}.\n")
         if m["notes"]:
             out.append("\n".join("- " + re.sub(r"<code>(.*?)</code>", r"`\1`", n) for n in m["notes"]) + "\n")
@@ -83,7 +83,7 @@ def sections_md(models):
 
 def fit_md(models):
     rows = ["| GPUs | Nodes | Model | Weights per GPU | Concurrent 262k contexts held | Layout |", "|---:|---:|---|---:|---:|---|"]
-    for m in sorted(models, key=lambda m: (m["gpus"], m["gph1m"])):
+    for m in sorted(models, key=lambda m: (m["gpus"], m["test_gpuh"])):
         l = m["load"]
         rows.append(f"| {m['gpus']} | {m['nodes']} | [{m['label']}](#{m['key']}) | {l.get('weights_gib_per_gpu', 0):.0f} GiB | "
                     f"{l.get('max_concurrency_at_262144_ctx', 0):.1f} | {m['layout']} |")

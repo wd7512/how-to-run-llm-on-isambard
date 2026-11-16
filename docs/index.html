@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LLMs on Isambard-AI</title>
-<meta name="description" content="Measured speed and GPU-hour cost of running large open-weight LLMs on Isambard-AI (GH200) with vLLM, with exact one-command steps per model.">
+<title>Running LLMs on Isambard-AI</title>
+<meta name="description" content="A practical guide to running large open-weight LLMs on Isambard-AI (GH200) with vLLM: how it is done, what throughput to expect and what node setup you need.">
 <style>
 :root {
   color-scheme: light;
@@ -87,6 +87,9 @@ footer { margin-top: 32px; font-size: 14px; color: var(--text-muted); }
 .tabs button { font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--grid); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--series-1); border-color: var(--series-1); color: #fff; }
 .tabs button.home { font-weight: 600; }
+.tabs select { font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--grid); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; max-width: 100%; }
+.tabs select.on { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+h1 a { color: inherit; text-decoration: none; }
 pre { background: var(--surface-0); border: 1px solid var(--grid); border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 13px; line-height: 1.5; color: var(--text-primary); margin: 8px 0; }
 code { font-size: 0.92em; }
 .meta { font-size: 13px; color: var(--text-muted); }
@@ -99,7 +102,7 @@ table.cmp tr.row:hover td { background: var(--surface-0); }
 </head>
 <body>
 <main>
-  <h1>Large LLMs on Isambard-AI</h1>
+  <h1><a href="./" id="home">Running LLMs on Isambard-AI</a></h1>
   <div class="tabs" role="tablist" aria-label="View" id="tabs"></div>
   <div id="view"></div>
   <footer>
@@ -174,12 +177,13 @@ function costChart(target, steps) {
   target.appendChild(svg);
 }
 
-// Scatter: x = GPU-hours per 1M output tokens at 64 users (log), y = single-user tok/s.
+// Scatter: x = GPU-hours the benchmark run used (measured, log scale), y = single-user tok/s.
 function scatter(target, current) {
-  const pts = MODELS.map(m => ({k: m.key, label: m.label, x: m.gph1m, y: m.tok1, gpus: m.gpus, agg: m.tok64}));
+  const pts = MODELS.map(m => ({k: m.key, label: m.label, x: m.test_gpuh, y: m.tok1, gpus: m.gpus, agg: m.tok64}));
   const W = 480, H = 340, L = 48, R = 16, T = 16, B = 52;
-  const lo = Math.pow(10, Math.floor(Math.log10(Math.min(...pts.map(p => p.x)) * 0.8)));
-  const hi = Math.pow(10, Math.ceil(Math.log10(Math.max(...pts.map(p => p.x)) * 1.2)));
+  const TICKS = [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2];
+  const lo = [...TICKS].reverse().find(t => t <= Math.min(...pts.map(p => p.x)) * 0.8) || TICKS[0];
+  const hi = TICKS.find(t => t >= Math.max(...pts.map(p => p.x)) * 1.25) || TICKS[TICKS.length - 1];
   const ymax = Math.ceil(Math.max(...pts.map(p => p.y)) / 50) * 50;
   const xs = v => L + (W - L - R) * (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo));
   const ys = v => T + (H - T - B) * (1 - v / ymax);
@@ -188,11 +192,11 @@ function scatter(target, current) {
     el("line", {class: "grid", x1: L, x2: W - R, y1: ys(v), y2: ys(v)}, svg);
     el("text", {x: L - 8, y: ys(v) + 4, "text-anchor": "end"}, svg).textContent = fmt(v);
   }
-  [0.1, 0.2, 0.5, 1, 2, 5, 10, 20].filter(v => v >= lo && v <= hi).forEach(v => {
+  TICKS.filter(v => v >= lo && v <= hi).forEach(v => {
     el("line", {class: "grid", x1: xs(v), x2: xs(v), y1: T, y2: H - B}, svg);
-    el("text", {x: xs(v), y: H - B + 18, "text-anchor": "middle"}, svg).textContent = v;
+    el("text", {x: xs(v), y: H - B + 18, "text-anchor": "middle"}, svg).textContent = String(v);
   });
-  el("text", {x: (L + W - R) / 2, y: H - 8, "text-anchor": "middle"}, svg).textContent = "GPU-hours per 1M output tokens (1,024 in / 256 out per request)";
+  el("text", {x: (L + W - R) / 2, y: H - 8, "text-anchor": "middle"}, svg).textContent = "GPU-hours to run the benchmark (log scale)";
   el("text", {x: 12, y: (T + H - B) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(T + H - B) / 2})`}, svg).textContent = "Single-user tok/s";
   // Labels: place right of the dot, or left near the right edge; nudge apart if two labels would overlap.
   const placed = [];
@@ -204,7 +208,7 @@ function scatter(target, current) {
     const g = el("g", {style: "cursor:pointer"}, svg);
     el("circle", {cx, cy, r: 7, class: "dot" + (p.k === current ? " cur" : "")}, g);
     el("text", {class: "val", x: left ? cx - 12 : cx + 12, y: ly, "text-anchor": left ? "end" : "start"}, g).textContent = p.label;
-    hover(g, `${p.label}: ${fmt(p.y, 0)} tok/s for one user; ${fmt(p.x, 2)} GPU-hours per 1M output tokens (${p.gpus} GPU${p.gpus > 1 ? "s" : ""}, ${fmt(p.agg, 0)} tok/s at 64 users; 1,024 in / 256 out per request)`);
+    hover(g, `${p.label}: ${fmt(p.y, 0)} tok/s for one user; ${fmt(p.x, 3)} GPU-hours to run the benchmark (${p.gpus} GPU${p.gpus > 1 ? "s" : ""}, ${fmt(p.agg, 0)} tok/s at 64 users)`);
     g.addEventListener("click", () => go(p.k));
   });
   target.appendChild(svg);
@@ -216,8 +220,8 @@ function fmtCmd(c) { return c.replace(/ (--[a-z0-9.-]+)/g, " \\\n  $1"); }
 const CLONE = "git clone " + REPO + ".git && cd how-to-run-llm-on-isambard";
 
 function overview() {
-  const cheapest = MODELS.reduce((a, b) => a.gph1m < b.gph1m ? a : b), fastest = MODELS.reduce((a, b) => a.tok1 > b.tok1 ? a : b);
-  const sorted = [...MODELS].sort((a, b) => a.gph1m - b.gph1m);
+  const cheapest = MODELS.reduce((a, b) => a.test_gpuh < b.test_gpuh ? a : b), fastest = MODELS.reduce((a, b) => a.tok1 > b.tok1 ? a : b);
+  const sorted = [...MODELS].sort((a, b) => a.test_gpuh - b.test_gpuh);
   const v = $("view");
   v.innerHTML = `
   <p class="sub">A practical guide to running large open-weight LLMs on Isambard-AI (GH200 GPUs) with vLLM: how it is done, what
@@ -225,20 +229,20 @@ function overview() {
     Pick a model above to see exactly how it was served.</p>
   <section class="tiles" aria-label="Headline numbers">
     <div class="tile"><div class="label">Models measured</div><div class="value">${MODELS.length}</div><p class="note">from ${fmt(Math.min(...MODELS.map(m => m.weights_gb)), 0)} GB to ${fmt(Math.max(...MODELS.map(m => m.weights_gb)), 0)} GB of weights</p></div>
-    <div class="tile"><div class="label">Cheapest per token</div><div class="value">${esc(cheapest.label)}</div><p class="note">${fmt(cheapest.gph1m, 2)} GPU-hours per 1M output tokens on ${cheapest.gpus} GPU${cheapest.gpus > 1 ? "s" : ""}</p></div>
+    <div class="tile"><div class="label">Cheapest to benchmark</div><div class="value">${esc(cheapest.label)}</div><p class="note">${fmt(cheapest.test_gpuh, 3)} GPU-hours for the benchmark run on ${cheapest.gpus} GPU${cheapest.gpus > 1 ? "s" : ""}</p></div>
     <div class="tile"><div class="label">Fastest for one user</div><div class="value">${fmt(fastest.tok1, 0)} tok/s</div><p class="note">${esc(fastest.label)}, on ${fastest.gpus} GPUs</p></div>
   </section>
   <section class="card">
     <h2>Speed vs cost</h2>
-    <p class="desc">Each dot is a model. Up is faster for one user. Left is cheaper: GPU-hours needed to generate one million output tokens with 64 users at once. The cost is measured on one fixed workload, so it is only comparable under it: ${TOK}. Formula: GPUs &divide; aggregate output tok/s &divide; 3,600 &times; 1,000,000. Click a dot to open that model.</p>
+    <p class="desc">Each dot is a model. Up is faster for one user. Left is cheaper: the GPU-hours the benchmark itself used, measured as GPUs &times; the time the 64-user run took. Every model runs the same test, so it compares them: ${TOK}; that is 256 requests, 262,144 input and 65,536 output tokens, 64 at a time. Click a dot to open that model.</p>
     <div id="c-scatter"></div>
   </section>
   <section class="card">
     <h2>All models</h2>
     <p class="desc">Sorted cheapest first. Click a row for how it was served. GPU-hours to reproduce = download + container build (shared) + one serve-and-benchmark run.</p>
     <div class="tablewrap"><table class="cmp">
-      <thead><tr><th>Model</th><th>GPUs</th><th>Weights</th><th>1 user tok/s</th><th>64 users tok/s</th><th>GPU-h per 1M out tok</th><th>GPU-h to reproduce</th><th>Status</th></tr></thead>
-      <tbody>${sorted.map(m => `<tr class="row" data-k="${m.key}"><td>${esc(m.label)}</td><td>${m.gpus}</td><td>${fmt(m.weights_gb, m.weights_gb < 100 ? 1 : 0)} GB</td><td>${fmt(m.tok1, m.tok1 < 10 ? 1 : 0)}</td><td>${fmt(m.tok64)}</td><td>${fmt(m.gph1m, 2)}</td><td>${fmt(m.gpu_hours.total, 2)}</td><td>${esc(m.status)}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>Model</th><th>GPUs</th><th>Weights</th><th>1 user tok/s</th><th>64 users tok/s</th><th>GPU-h to run the benchmark</th><th>GPU-h to reproduce</th><th>Status</th></tr></thead>
+      <tbody>${sorted.map(m => `<tr class="row" data-k="${m.key}"><td>${esc(m.label)}</td><td>${m.gpus}</td><td>${fmt(m.weights_gb, m.weights_gb < 100 ? 1 : 0)} GB</td><td>${fmt(m.tok1, m.tok1 < 10 ? 1 : 0)}</td><td>${fmt(m.tok64)}</td><td>${fmt(m.test_gpuh, 3)}</td><td>${fmt(m.gpu_hours.total, 2)}</td><td>${esc(m.status)}</td></tr>`).join("")}</tbody>
     </table></div>
   </section>
   <section class="card">
@@ -288,7 +292,7 @@ function detail(m) {
   <section class="tiles" aria-label="Headline numbers">
     <div class="tile"><div class="label">Single user, output speed</div><div class="value">${fmt(m.tok1, m.tok1 < 10 ? 1 : 0)} tok/s</div><p class="note">time to first token ${fmt(r[0].mean_ttft_ms, r[0].mean_ttft_ms < 1000 ? 0 : 0)} ms</p></div>
     <div class="tile"><div class="label">Aggregate at 64 concurrent users</div><div class="value">${fmt(m.tok64)} tok/s</div><p class="note">each user sees ~${fmt(1000 / top.mean_tpot_ms)} tok/s</p></div>
-    <div class="tile"><div class="label">Cost per 1M output tokens</div><div class="value">${fmt(m.gph1m, 2)} GPU-h</div><p class="note">at 64 users, 1,024 in / 256 out per request</p></div>
+    <div class="tile"><div class="label">GPU-hours to run the benchmark</div><div class="value">${fmt(m.test_gpuh, 3)} GPU-h</div><p class="note">64-user run: ${fmt(m.test_s, 0)} s on ${m.gpus} GPU${m.gpus > 1 ? "s" : ""}, 262,144 in / 65,536 out tokens</p></div>
   </section>
   <section class="card"><h2>How it was served</h2>
     <p class="desc">What the job actually ran, recorded by the run itself. Slurm request: <code>--nodes=${m.nodes} --gpus-per-node=${m.gpus_per_node} --time=${esc(m.time_cap)}</code>. Everything runs inside the container, started once per node:</p>
@@ -340,12 +344,15 @@ function go(k) { history.pushState(null, "", k === "overview" ? location.pathnam
 function show() {
   const cur = current();
   $("tabs").innerHTML = `<button class="home" role="tab" data-k="overview" aria-selected="${cur === "overview"}">Overview</button>` +
-    MODELS.map(m => `<button role="tab" data-k="${m.key}" aria-selected="${cur === m.key}">${esc(m.label)}</button>`).join("");
-  $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => go(b.dataset.k));
-  if (cur === "overview") { document.title = "LLMs on Isambard-AI"; overview(); }
+    `<select id="model-select" class="${cur === "overview" ? "" : "on"}" aria-label="Choose a model"><option value="">Models (${MODELS.length})</option>` +
+    MODELS.map(m => `<option value="${m.key}"${cur === m.key ? " selected" : ""}>${esc(m.label)}</option>`).join("") + "</select>";
+  $("tabs").querySelector("button").onclick = () => go("overview");
+  $("model-select").onchange = e => { if (e.target.value) go(e.target.value); };
+  if (cur === "overview") { document.title = "Running LLMs on Isambard-AI"; overview(); }
   else { document.title = byKey[cur].label + " on Isambard-AI"; detail(byKey[cur]); }
 }
 addEventListener("popstate", show);
+$("home").addEventListener("click", e => { e.preventDefault(); go("overview"); });
 show();
 </script>
 </body>

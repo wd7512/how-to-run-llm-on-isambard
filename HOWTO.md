@@ -118,21 +118,21 @@ Environment variables set inside the container (all in `node_entry.sh`):
 ## 5. Results
 
 <!-- BEGIN:models-table -->
-| `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours per 1M output tokens | GPU-hours to reproduce | Status |
+| `MODEL=` | Model | Weights | GPUs | Output tok/s, 1 / 64 users | GPU-hours to run the benchmark | GPU-hours to reproduce | Status |
 |---|---|---:|---:|---:|---:|---:|---|
-| `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 47 / 1,446 | 1.54 | ~1.37 | worked |
-| `glm53` | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 328 GB | 8 | 7.3 / 449 | 4.95 | ~2.14 | eager only |
-| `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,421 | 0.20 | ~0.39 | worked |
-| `flint` | [Flint 40B-A2.5B](https://huggingface.co/RecursiveSI/flint) | 79.6 GB | 2 | 194 / 3,983 | 0.14 | ~0.40 | worked |
-| `mimo26` | [MiMo-V2.6-Flash](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL) | 178 GB | 4 | 231 / 2,370 | 0.47 | ~0.90 | worked |
-| `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 154 / 2,647 | 0.42 | ~0.78 | worked |
-| `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,656 | 0.34 | ~0.51 | worked |
-| `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 207 / 2,600 | 0.11 | ~0.41 | worked |
-| `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 220 / 2,714 | 0.10 | ~0.37 | worked |
+| `dsv41` | [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 510 GB | 8 | 47 / 1,446 | 0.101 | ~1.37 | worked |
+| `glm53` | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 328 GB | 8 | 7.3 / 449 | 0.324 | ~2.14 | eager only |
+| `qwen38` | [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | 55.6 GB | 1 | 57 / 1,421 | 0.013 | ~0.39 | worked |
+| `flint` | [Flint 40B-A2.5B](https://huggingface.co/RecursiveSI/flint) | 79.6 GB | 2 | 194 / 3,983 | 0.009 | ~0.40 | worked |
+| `mimo26` | [MiMo-V2.6-Flash](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL) | 178 GB | 4 | 231 / 2,370 | 0.031 | ~0.90 | worked |
+| `qwen38flash` | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 360 GB | 4 | 154 / 2,647 | 0.028 | ~0.78 | worked |
+| `gemma31b` | [Gemma 4 31B](https://huggingface.co/google/gemma-4-31B) | 62.6 GB | 2 | 80 / 1,656 | 0.022 | ~0.51 | worked |
+| `gemma26b` | [Gemma 4 26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B) | 51.6 GB | 1 | 207 / 2,600 | 0.007 | ~0.41 | worked |
+| `ornith35b` | [Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B) | 70.3 GB | 1 | 220 / 2,714 | 0.007 | ~0.37 | worked |
 <!-- END:models-table -->
 
-**GPU-hours per 1M output tokens** is the comparable cost (section 8). Every model below has its own notes and the
-command that was run.
+**GPU-hours to run the benchmark** is the comparable cost (section 8): the GPUs used x the time the 64-user run took, measured.
+Every model below has its own notes and the command that was run.
 
 ## 6. Per-model notes and commands
 
@@ -142,7 +142,7 @@ command that was run.
 **DeepSeek-V4.1-Flash** ([deepseek-ai/DeepSeek-V4.1-Flash-1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017), revision `08c8657f0229`). `DeepSeek-V4.1-Flash-1017`: 552B-parameter mixture-of-experts, 1M-token context, FP8 with FP4 experts, 510 GB. Needs 2 nodes (8 GPUs): the weights alone exceed one node's memory.
 
 ```bash
-MODEL=dsv41 bash scripts/run.sh               # 2 node(s) x 4 GPU(s), time cap 00:40:00
+MODEL=dsv41 bash scripts/run.sh               # 2 node(s) x 4 GPU(s), time cap 00:18:00
 MODEL=dsv41 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -167,7 +167,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 47.1 output tok/s for one user, 1,446 at 64 users; **1.54 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~1.37 GPU-hours to reproduce. Layout: TP4 x DP2 + expert-parallel, 2 node(s).
+Measured: 47.1 output tok/s for one user, 1,446 at 64 users; **0.101 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 45 s on 8 GPU(s)); ~1.37 GPU-hours to reproduce. Layout: TP4 x DP2 + expert-parallel, 2 node(s).
 
 - Layout is tensor-parallel 4 per node x data-parallel 2 + expert parallel. Pipeline parallel across nodes fails in vLLM 0.33 for this model (`AssertionError` in `_run_layers`).
 - vLLM puts the ~196B-parameter Engram embedding tables in pinned host RAM by itself (about 24 GiB per rank).
@@ -179,7 +179,7 @@ Measured: 47.1 output tok/s for one user, 1,446 at 64 users; **1.54 GPU-hours pe
 **GLM-5.3-Flash** ([zai-org/GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash), revision `46a050bec130`). `zai-org/GLM-5.3-Flash`: MoE with 288 routed experts, 1M-token context, FP8, 328 GB. Needs 2 nodes. Runs with `--enforce-eager` because CUDA graphs hang on this layout, so these numbers are a floor, not the best this hardware can do.
 
 ```bash
-MODEL=glm53 bash scripts/run.sh               # 2 node(s) x 4 GPU(s), time cap 00:40:00
+MODEL=glm53 bash scripts/run.sh               # 2 node(s) x 4 GPU(s), time cap 00:33:00
 MODEL=glm53 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -205,7 +205,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 7.3 output tok/s for one user, 449 at 64 users; **4.95 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~2.14 GPU-hours to reproduce. Layout: TP4 x DP2 + expert-parallel, 2 node(s).
+Measured: 7.3 output tok/s for one user, 449 at 64 users; **0.324 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 146 s on 8 GPU(s)); ~2.14 GPU-hours to reproduce. Layout: TP4 x DP2 + expert-parallel, 2 node(s).
 
 - CUDA-graph capture hung at 12/19 for 22 minutes with no error (DP 2 x TP 4 + EP), so the preset uses `--enforce-eager`. Open item: find a graph mode that works, or try TP 8 across both nodes as the vLLM recipe does on one 8-GPU node.
 - First start JIT-compiles FlashInfer kernels and vLLM gives up after 600 s by default: `VLLM_ENGINE_READY_TIMEOUT_S=3600` is set in `node_entry.sh`.
@@ -216,7 +216,7 @@ Measured: 7.3 output tok/s for one user, 449 at 64 users; **4.95 GPU-hours per 1
 **Qwen3.8-27B** ([Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B), revision `37561816e66b`). `Qwen/Qwen3.8-27B`: dense 27B, bf16, 55.6 GB, 262k context. Fits on a single GPU (51 GiB of weights).
 
 ```bash
-MODEL=qwen38 bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 00:30:00
+MODEL=qwen38 bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 00:11:00
 MODEL=qwen38 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -236,7 +236,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 57.2 output tok/s for one user, 1,421 at 64 users; **0.20 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.39 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
+Measured: 57.2 output tok/s for one user, 1,421 at 64 users; **0.013 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 46 s on 1 GPU(s)); ~0.39 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
 
 - One GPU is enough; for more throughput raise `GPUS` and `DP_PER_NODE` together in `scripts/models/qwen38.env`.
 - With one GPU the KV cache holds only about 1.9 full-length (262k) contexts.
@@ -246,7 +246,7 @@ Measured: 57.2 output tok/s for one user, 1,421 at 64 users; **0.20 GPU-hours pe
 **Flint 40B-A2.5B** ([RecursiveSI/flint](https://huggingface.co/RecursiveSI/flint), revision `2a247be0c0ae`). `RecursiveSI/flint`: 39.8B MoE with ~2.5B active parameters, 256 experts, bf16, 79.6 GB, 262k context. This is the unquantised base of `OsaurusAI/Flint-40B-A2.5B-JANGH2`; that checkpoint is an Apple-Silicon (MLX) format that vLLM cannot load.
 
 ```bash
-MODEL=flint bash scripts/run.sh               # 1 node(s) x 2 GPU(s), time cap 00:30:00
+MODEL=flint bash scripts/run.sh               # 1 node(s) x 2 GPU(s), time cap 00:10:00
 MODEL=flint python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -264,7 +264,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 193.8 output tok/s for one user, 3,983 at 64 users; **0.14 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.40 GPU-hours to reproduce. Layout: TP2 x DP1 + expert-parallel, 1 node(s).
+Measured: 193.8 output tok/s for one user, 3,983 at 64 users; **0.009 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 16 s on 2 GPU(s)); ~0.40 GPU-hours to reproduce. Layout: TP2 x DP1 + expert-parallel, 1 node(s).
 
 - `OsaurusAI/Flint-40B-A2.5B-JANGH2` will not load: it is an MLX checkpoint with a custom JANGH 2-bit quantisation. The preset serves the BF16 base instead.
 - vLLM picks the FLASH_ATTN backend by default but the Flint model code asserts FlashInfer: the preset sets `--attention-backend FLASHINFER`.
@@ -275,7 +275,7 @@ Measured: 193.8 output tok/s for one user, 3,983 at 64 users; **0.14 GPU-hours p
 **MiMo-V2.6-Flash** ([XiaomiMiMo/MiMo-V2.6-Flash-RL](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL), revision `f657ba2f7d24`). `XiaomiMiMo/MiMo-V2.6-Flash-RL`: MoE with 256 experts, 1M-token context, FP8 compute from mxfp4-stored weights, 178 GB.
 
 ```bash
-MODEL=mimo26 bash scripts/run.sh               # 1 node(s) x 4 GPU(s), time cap 00:30:00
+MODEL=mimo26 bash scripts/run.sh               # 1 node(s) x 4 GPU(s), time cap 00:21:00
 MODEL=mimo26 python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -296,7 +296,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 230.6 output tok/s for one user, 2,370 at 64 users; **0.47 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.90 GPU-hours to reproduce. Layout: TP4 x DP1, 1 node(s).
+Measured: 230.6 output tok/s for one user, 2,370 at 64 users; **0.031 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 28 s on 4 GPU(s)); ~0.90 GPU-hours to reproduce. Layout: TP4 x DP1, 1 node(s).
 
 - Needs vLLM 0.31 or newer for the mxfp4 weights (the image has 0.33).
 - The vLLM recipe recommends the `-MOPD` checkpoint over this `-RL` one, because `-RL` can get stuck repeating tool calls. The preset runs the `-RL` checkpoint; that behaviour was not tested.
@@ -307,7 +307,7 @@ Measured: 230.6 output tok/s for one user, 2,370 at 64 users; **0.47 GPU-hours p
 **Qwen3.8-Flash-Next** ([Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next), revision `812d96e10a0d`). `Qwen/Qwen3.8-Flash-Next`: MoE, 125B total and 6B active parameters plus a 51B n-gram embedding table, 512 experts, bf16, 360 GB. The embedding table is offloaded to host RAM, leaving 61 GiB of weights per GPU.
 
 ```bash
-MODEL=qwen38flash bash scripts/run.sh               # 1 node(s) x 4 GPU(s), time cap 00:30:00
+MODEL=qwen38flash bash scripts/run.sh               # 1 node(s) x 4 GPU(s), time cap 00:16:00
 MODEL=qwen38flash python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -329,7 +329,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 154.1 output tok/s for one user, 2,647 at 64 users; **0.42 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.78 GPU-hours to reproduce. Layout: TP4 x DP1 + expert-parallel, 1 node(s).
+Measured: 154.1 output tok/s for one user, 2,647 at 64 users; **0.028 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 25 s on 4 GPU(s)); ~0.78 GPU-hours to reproduce. Layout: TP4 x DP1 + expert-parallel, 1 node(s).
 
 - The n-gram embedding table is offloaded to host RAM by default, so the job needs the host memory of a full 4-GPU allocation.
 - The recipe says to keep `--max-num-seqs 256` (smaller values hit a Mamba-cache capacity error); it is in the preset's extra args and overrides the default of 64.
@@ -340,7 +340,7 @@ Measured: 154.1 output tok/s for one user, 2,647 at 64 users; **0.42 GPU-hours p
 **Gemma 4 31B** ([google/gemma-4-31B](https://huggingface.co/google/gemma-4-31B), revision `5bbc2fb1c1b2`). `google/gemma-4-31B`: dense 31B, bf16, 62.6 GB, 262k context, Apache-2.0. The weights fit on one GPU, but a full 262k context needs 2.
 
 ```bash
-MODEL=gemma31b bash scripts/run.sh               # 1 node(s) x 2 GPU(s), time cap 00:30:00
+MODEL=gemma31b bash scripts/run.sh               # 1 node(s) x 2 GPU(s), time cap 00:12:00
 MODEL=gemma31b python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -359,7 +359,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 80.1 output tok/s for one user, 1,656 at 64 users; **0.34 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.51 GPU-hours to reproduce. Layout: TP2 x DP1, 1 node(s).
+Measured: 80.1 output tok/s for one user, 1,656 at 64 users; **0.022 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 40 s on 2 GPU(s)); ~0.51 GPU-hours to reproduce. Layout: TP2 x DP1, 1 node(s).
 
 - Ungated, so no Hugging Face token is needed.
 - `google/gemma-4-31B` is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is `google/gemma-4-31B-it`; the architecture and size are the same, so speed should match, but it was not run.
@@ -371,7 +371,7 @@ Measured: 80.1 output tok/s for one user, 1,656 at 64 users; **0.34 GPU-hours pe
 **Gemma 4 26B-A4B** ([google/gemma-4-26B-A4B](https://huggingface.co/google/gemma-4-26B-A4B), revision `24548b62aa02`). `google/gemma-4-26B-A4B`: MoE with 128 experts (8 active, about 4B active parameters), bf16, 51.6 GB, 262k context, Apache-2.0. Fits on a single GPU.
 
 ```bash
-MODEL=gemma26b bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 00:30:00
+MODEL=gemma26b bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 00:10:00
 MODEL=gemma26b python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -390,7 +390,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 206.7 output tok/s for one user, 2,600 at 64 users; **0.11 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.41 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
+Measured: 206.7 output tok/s for one user, 2,600 at 64 users; **0.007 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 25 s on 1 GPU(s)); ~0.41 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
 
 - Ungated, so no Hugging Face token is needed.
 - `google/gemma-4-26B-A4B` is the pre-trained base checkpoint: it has no chat template, so the chat smoke test returns an error and the benchmark (which does not use the chat API) is what is measured. The instruction-tuned variant is `google/gemma-4-26B-A4B-it`; the architecture and size are the same, so speed should match, but it was not run.
@@ -401,7 +401,7 @@ Measured: 206.7 output tok/s for one user, 2,600 at 64 users; **0.11 GPU-hours p
 **Ornith-1.0-35B** ([ornith-ai/Ornith-1.0-35B](https://huggingface.co/ornith-ai/Ornith-1.0-35B), revision `5df2ed3f675c`). `ornith-ai/Ornith-1.0-35B`: MoE with 256 experts (8 active), about 35B parameters, bf16, 70.3 GB, 262k context, MIT. A reasoning model on the Qwen3.5-MoE architecture.
 
 ```bash
-MODEL=ornith35b bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 00:30:00
+MODEL=ornith35b bash scripts/run.sh               # 1 node(s) x 1 GPU(s), time cap 00:10:00
 MODEL=ornith35b python3 scripts/collect_results.py   # when the serve job has finished
 ```
 
@@ -422,7 +422,7 @@ vllm serve <model-dir> \
   --port 8000
 ```
 
-Measured: 220.1 output tok/s for one user, 2,714 at 64 users; **0.10 GPU-hours per 1M output tokens** (1,024 input + 256 output tokens per request, 64-user run = 262,144 input / 65,536 output tokens); ~0.37 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
+Measured: 220.1 output tok/s for one user, 2,714 at 64 users; **0.007 GPU-hours to run the benchmark** (the 64-user run: 256 requests of 1,024 input + 256 output tokens = 262,144 input / 65,536 output tokens, 24 s on 1 GPU(s)); ~0.37 GPU-hours to reproduce. Layout: TP1 x DP1, 1 node(s).
 
 - Ungated, so no Hugging Face token is needed. Needs vLLM 0.19.1 or newer (the image has 0.33).
 - Uses the model card's flags: `qwen3` reasoning parser, `qwen3_xml` tool-call parser, prefix caching.
@@ -468,8 +468,9 @@ vllm bench serve --model <served-name> --tokenizer <model dir> --port 8000 \
 - **Input tokens:** 1,024 per request, random tokens (so no prompt-cache hits). **Output tokens:** 256 per request. That is
   4 input tokens for every output token, so each output token carries 4 tokens of prefill.
 - **The 64-user run** is 256 requests: 262,144 input and 65,536 output tokens (the saved JSON records the measured counts).
-- **GPU-hours per 1M output tokens** = `GPUs / output_tok_s / 3600 * 1e6`, using that run. Change the input or output length and
-  the metric changes with it, so quote the token counts whenever you quote the number.
+- **GPU-hours to run the benchmark** = GPUs x the duration of the 64-user run / 3600. It is measured, not extrapolated, and
+  every model runs the same 256 requests (262,144 input, 65,536 output tokens), so it compares models. Change the input or
+  output length and it changes with it, so quote the token counts whenever you quote the number.
 - **GPU-hours** come from Slurm: `sacct -X -P -j <ids> -o JobID,ElapsedRaw,AllocTRES` (GPUs x elapsed seconds / 3600).
 
 ## 9. Troubleshooting
