@@ -104,16 +104,23 @@ try:
 except Exception as e:
     res["names_error"] = str(e)[:150]
 try:
+    import dataclasses
+    from vllm.engine.arg_utils import EngineArgs
+    names = {"--" + f.name.replace("_", "-") for f in dataclasses.fields(EngineArgs)}
+    complete = True
     try:
-        from vllm.entrypoints.common.cli_args import make_arg_parser
-    except ImportError:
-        from vllm.entrypoints.openai.cli_args import make_arg_parser   # older vLLM
-    from vllm.utils.argparse_utils import FlexibleArgumentParser
-    p = make_arg_parser(FlexibleArgumentParser())
-    p.parse_args(["model", "--tensor-parallel-size", os.environ["TP"], "--max-model-len", os.environ["MAX_LEN"]] + args)
-    res["flags_ok"] = True
-except SystemExit:
-    res["flags_ok"] = False
+        from vllm.entrypoints.common.cli_args import FrontendArgs
+        names |= {"--" + f.name.replace("_", "-") for f in dataclasses.fields(FrontendArgs)}
+    except Exception:
+        complete = False        # frontend flags (parsers etc.) not enumerable: only report flags that are clearly wrong
+    unknown = []
+    for a in args:
+        if a.startswith("--"):
+            base = a.split(".")[0]
+            base = "--" + base[5:] if base.startswith("--no-") and ("--" + base[5:]) in names else base
+            if base not in names: unknown.append(a)
+    res["unknown_flags"] = unknown
+    res["flags_complete"] = complete
 except Exception as e:
     res["flags_error"] = str(e)[:150]
 print("PREFLIGHT_JSON " + json.dumps(res))
@@ -128,9 +135,10 @@ print("PREFLIGHT_JSON " + json.dumps(res))
             if res.get("bad_names"): fail("unknown parser/backend name: " + ", ".join(res["bad_names"]))
             elif "names_error" in res: warn("could not check parser names (%s)" % res["names_error"])
             else: ok("parser and attention-backend names are valid")
-            if res.get("flags_ok") is True: ok("vLLM accepts every flag in VLLM_EXTRA_ARGS")
-            elif res.get("flags_ok") is False: fail("vLLM rejected a flag in VLLM_EXTRA_ARGS: %s" % E.get("VLLM_EXTRA_ARGS"))
-            else: warn("could not check the flags (%s)" % res.get("flags_error", "?"))
+            if "flags_error" in res: warn("could not check the flags (%s)" % res["flags_error"])
+            elif res.get("unknown_flags"):
+                (fail if res.get("flags_complete") else warn)("flag(s) vLLM does not recognise: %s" % " ".join(res["unknown_flags"]))
+            else: ok("every flag in VLLM_EXTRA_ARGS is a vLLM option")
 
     print("preflight: %d FAIL, %d WARN" % (len(fails), len(warns)))
     sys.exit(1 if fails else 0)
