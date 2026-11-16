@@ -119,7 +119,18 @@ try:
             base = a.split(".")[0]
             base = "--" + base[5:] if base.startswith("--no-") and ("--" + base[5:]) in names else base
             if base not in names: unknown.append(a)
-    res["unknown_flags"] = unknown
+    # A flag that is not an option may still be a legacy alias handled elsewhere: if its text appears anywhere in the
+    # installed vLLM it is only a warning; if it appears nowhere it is certainly wrong.
+    import vllm
+    root = os.path.dirname(vllm.__file__)
+    blob = ""
+    for d, _, fs in os.walk(root):
+        for f in fs:
+            if f.endswith(".py"):
+                try: blob += open(os.path.join(d, f), errors="ignore").read()
+                except Exception: pass
+    res["unknown_flags"] = [a for a in unknown if a not in blob]
+    res["alias_flags"] = [a for a in unknown if a in blob]
     res["flags_complete"] = complete
 except Exception as e:
     res["flags_error"] = str(e)[:150]
@@ -137,7 +148,9 @@ print("PREFLIGHT_JSON " + json.dumps(res))
             else: ok("parser and attention-backend names are valid")
             if "flags_error" in res: warn("could not check the flags (%s)" % res["flags_error"])
             elif res.get("unknown_flags"):
-                (fail if res.get("flags_complete") else warn)("flag(s) vLLM does not recognise: %s" % " ".join(res["unknown_flags"]))
+                (fail if res.get("flags_complete") else warn)("flag(s) vLLM does not recognise anywhere: %s" % " ".join(res["unknown_flags"]))
+            elif res.get("alias_flags"):
+                warn("flag(s) %s are not engine options but appear in vLLM (legacy alias?); the model that uses them has run" % " ".join(res["alias_flags"]))
             else: ok("every flag in VLLM_EXTRA_ARGS is a vLLM option")
 
     print("preflight: %d FAIL, %d WARN" % (len(fails), len(warns)))
