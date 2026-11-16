@@ -1,0 +1,107 @@
+{
+  "model": "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16",
+  "preset": "nemotron35",
+  "revision": "fb0ee0bc6b3f70342afd8d84cb80dbadbaa8a1fe",
+  "date": "2026-11-16",
+  "system": "Isambard-AI Phase 2, 4 x GH200 (96 GiB HBM each), 1 node",
+  "software": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "image": "docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
+  },
+  "layout": "TP4 x DP1, 1 node(s)",
+  "config_hash": "7ab00e1a41a78e2f",
+  "startup_s": 240,
+  "vllm_args": "--trust-remote-code --async-scheduling --max-num-seqs 32 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3",
+  "serve_command": "vllm serve <model-dir> --served-model-name nemotron35 --tensor-parallel-size 4 --max-model-len 262144 --max-num-seqs 64 --gpu-memory-utilization 0.90 --trust-remote-code --async-scheduling --max-num-seqs 32 --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser nemotron_v3 --port 8000",
+  "worker_command": null,
+  "env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRITON_LIBCUDA_PATH": "/.singularity.d/libs",
+    "VLLM_ENGINE_READY_TIMEOUT_S": "3600",
+    "DG_JIT_CACHE_DIR": "/local/<node-local-cache>/deep_gemm",
+    "TRITON_CACHE_DIR": "/local/<node-local-cache>/triton",
+    "VLLM_CACHE_ROOT": "/local/<node-local-cache>/vllm",
+    "TORCHINDUCTOR_CACHE_DIR": "/local/<node-local-cache>/inductor",
+    "XDG_CACHE_HOME": "/local/<node-local-cache>/xdg"
+  },
+  "gpus": 4,
+  "job_ids": {
+    "download": "8491805",
+    "build": "none",
+    "serve": "8491806"
+  },
+  "workload": {
+    "tool": "vllm bench serve",
+    "dataset": "random",
+    "input_tokens_per_request": 1024,
+    "output_tokens_per_request": 256,
+    "seed": 0,
+    "requests_per_level": "4 x concurrency"
+  },
+  "load": {
+    "weights_gib_per_gpu": 57.55,
+    "load_seconds": 91,
+    "kv_cache_tokens": 4402827,
+    "max_concurrency_at_262144_ctx": 16.8
+  },
+  "results": [
+    {
+      "concurrency": 1,
+      "requests": 4,
+      "failed": 0,
+      "output_tok_s": 200.9,
+      "mean_ttft_ms": 93.88,
+      "mean_tpot_ms": 4.63,
+      "total_input_tokens": 4096,
+      "total_output_tokens": 1024,
+      "duration_s": 5.1
+    },
+    {
+      "concurrency": 16,
+      "requests": 64,
+      "failed": 0,
+      "output_tok_s": 1147.97,
+      "mean_ttft_ms": 524.42,
+      "mean_tpot_ms": 11.92,
+      "total_input_tokens": 65536,
+      "total_output_tokens": 16384,
+      "duration_s": 14.3
+    },
+    {
+      "concurrency": 64,
+      "requests": 256,
+      "failed": 0,
+      "output_tok_s": 1769.34,
+      "mean_ttft_ms": 4430.65,
+      "mean_tpot_ms": 16.74,
+      "total_input_tokens": 262145,
+      "total_output_tokens": 65536,
+      "duration_s": 37.0
+    }
+  ],
+  "smoke_reply": {
+    "content": "Hello! How can I help you today?",
+    "has_reasoning_field": true
+  },
+  "cost_metric": {
+    "definition": "GPUs / output_tok_s / 3600 * 1e6, from the 64-concurrent-user run",
+    "run_requests": 256,
+    "run_input_tokens": 262145,
+    "run_output_tokens": 65536,
+    "run_duration_s": 37.0,
+    "gpus": 4,
+    "run_gpu_hours": 0.0411,
+    "gpu_hours_per_1m_output_tokens": 0.628
+  },
+  "gpu_hours": {
+    "download": 0.13,
+    "build": 0.29,
+    "serve": 0.379,
+    "total": 0.8,
+    "notes": [
+      "container build cost is the measured shared build (this run reused the image)"
+    ]
+  }
+}
