@@ -96,6 +96,9 @@ code { font-size: 0.92em; }
 .status { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--grid); color: var(--text-secondary); vertical-align: 2px; margin-left: 6px; }
 table.cmp td:last-child, table.cmp th:last-child { text-align: left; }
 table.fit th:nth-child(2), table.fit td:nth-child(2) { text-align: left; }
+.seg { display: inline-flex; gap: 0; margin: 4px 0 10px; border: 1px solid var(--grid); border-radius: 999px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; padding: 4px 12px; border: 0; background: var(--surface-1); color: var(--text-secondary); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--series-1); color: #fff; }
 table.cmp tr.row { cursor: pointer; }
 table.cmp tr.row:hover td { background: var(--surface-0); }
 .notes li { color: var(--text-secondary); margin-bottom: 6px; }
@@ -201,16 +204,26 @@ function scatter(target, current, opts) {
   });
   el("text", {x: (L + W - R) / 2, y: H - 8, "text-anchor": "middle"}, svg).textContent = "GPU-hours to run the benchmark (log scale)";
   el("text", {x: 12, y: (T + H - B) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(T + H - B) / 2})`}, svg).textContent = opts.yLabel;
-  // Labels: place right of the dot, or left near the right edge; nudge apart if two labels would overlap.
-  const placed = [];
+  // Labels: for each dot try right then left of it, and a few vertical offsets, taking the first position whose box
+  // does not overlap an already placed label or dot (box width estimated from the text length) and stays inside the plot.
+  const boxes = [], dots = pts.map(p => ({x: xs(p.x), y: ys(p.y)}));
+  const hit = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
   [...pts].sort((a, b) => a.y - b.y).forEach(p => {
-    const cx = xs(p.x), cy = ys(p.y), left = cx > W * 0.62;
-    let ly = cy + 4;
-    for (const q of placed) if (Math.abs(q.ly - ly) < 14 && Math.abs(q.cx - cx) < 150) ly = q.ly - 14;
-    placed.push({cx, ly});
+    const cx = xs(p.x), cy = ys(p.y), w = p.label.length * 7.4 + 4;
+    let best = null;
+    for (const [dy, side] of [[0, 1], [0, -1], [-12, 1], [12, 1], [-12, -1], [12, -1], [-24, 1], [24, 1], [-24, -1], [24, -1]]) {
+      const x0 = side > 0 ? cx + 12 : cx - 12 - w, box = {x0, x1: x0 + w, y0: cy + dy - 10, y1: cy + dy + 5};
+      if (box.x0 < L || box.x1 > W - 2 || box.y0 < T - 6 || box.y1 > H - B + 6) continue;
+      if (boxes.some(q => hit(box, q))) continue;
+      if (dots.some(d => hit(box, {x0: d.x - 8, x1: d.x + 8, y0: d.y - 8, y1: d.y + 8}))) continue;
+      best = {box, side, dy}; break;
+    }
+    if (!best) best = {box: {x0: cx + 12, x1: cx + 12 + w, y0: cy - 10, y1: cy + 5}, side: 1, dy: 0};   // fallback
+    boxes.push(best.box);
     const g = el("g", {style: "cursor:pointer"}, svg);
+    if (best.dy) el("line", {x1: cx, y1: cy, x2: cx + best.side * 10, y2: cy + best.dy - 1, stroke: "var(--text-muted)", "stroke-width": 1}, g);   // leader line
     el("circle", {cx, cy, r: 7, class: "dot" + (p.k === current ? " cur" : "")}, g);
-    el("text", {class: "val", x: left ? cx - 12 : cx + 12, y: ly, "text-anchor": left ? "end" : "start"}, g).textContent = p.label;
+    el("text", {class: "val", x: best.side > 0 ? cx + 12 : cx - 12, y: cy + best.dy + 4, "text-anchor": best.side > 0 ? "start" : "end"}, g).textContent = p.label;
     hover(g, p.tip);
     g.addEventListener("click", () => go(p.k));
   });
@@ -221,9 +234,24 @@ function speedPts() {
   return MODELS.map(m => ({k: m.key, label: m.label, x: m.test_gpuh, y: m.tok1,
     tip: `${m.label}: ${fmt(m.tok1, 0)} tok/s for one user; ${fmt(m.test_gpuh, 3)} GPU-hours to run the benchmark (${gpuTxt(m)}, ${fmt(m.tok64, 0)} tok/s at 64 users)`}));
 }
+let qsrc = "aa";                                   // which quality score the chart shows: "aa" or "vals"
+const QMETA = () => ({aa: {key: "aa", label: "Artificial Analysis Intelligence Index", short: "AA Index", unit: "", yLabel: "Artificial Analysis Intelligence Index", meta: SITE.aa},
+                      vals: {key: "vals", label: "Vals Index", short: "Vals Index", unit: "%", yLabel: "Vals Index score (%)", meta: SITE.vals}})[qsrc];
 function qualityPts() {
-  return MODELS.filter(m => m.vals).map(m => ({k: m.key, label: m.label, x: m.test_gpuh, y: m.vals.score,
-    tip: `${m.label}: Vals Index ${fmt(m.vals.score, 2)}% (listed as "${m.vals.vals_name}"); ${fmt(m.test_gpuh, 3)} GPU-hours to run the benchmark (${gpuTxt(m)})`}));
+  const q = QMETA();
+  return MODELS.filter(m => m[q.key]).map(m => ({k: m.key, label: m.label, x: m.test_gpuh, y: m[q.key].score,
+    tip: `${m.label}: ${q.short} ${fmt(m[q.key].score, q.key === "vals" ? 2 : 0)}${q.unit} (listed as "${m[q.key].vals_name}"); ${fmt(m.test_gpuh, 3)} GPU-hours to run the benchmark (${gpuTxt(m)})`}));
+}
+function renderQuality() {
+  const q = QMETA(), pts = qualityPts();
+  $("c-quality").innerHTML = "";
+  scatter($("c-quality"), null, {pts, yMax: Math.ceil(Math.max(...pts.map(p => p.y)) * 1.15 / 10) * 10, yStep: q.key === "vals" ? 10 : 5, yLabel: q.yLabel, aria: q.label + " against GPU-hours to run the benchmark"});
+  $("q-desc").innerHTML = q.key === "aa"
+    ? `Same cost axis, but up is better quality: each model's <a href="${q.meta.source}">${esc(q.meta.name)}</a> (read ${esc(q.meta.as_of)}). These are <strong>third-party scores for hosted models</strong>, often at a stated reasoning effort; we did not run them, and the variant they used may differ from the weights we serve.`
+    : `Same cost axis, but up is better quality: each model's <a href="${q.meta.source}">Vals Index</a> score (v${esc(q.meta.version)}, as of ${esc(q.meta.as_of)}), which measures agentic performance on finance, coding, legal and tax tasks. These are <strong>third-party scores</strong> for hosted models; we did not run that benchmark, and the precision they served may differ from ours.`;
+  const missing = MODELS.filter(m => !m[q.key]).map(m => m.label);
+  $("q-missing").textContent = missing.length ? "Not plotted, because this source gives them no score: " + missing.join(", ") + "." : "";
+  document.querySelectorAll("#q-seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === qsrc));
 }
 
 // ---- views ----------------------------------------------------------------
@@ -251,7 +279,8 @@ function overview() {
   </section>
   <section class="card">
     <h2>Quality vs cost</h2>
-    <p class="desc">Same cost axis, but up is better quality: the model's <a href="${SITE.vals.source}">Vals Index</a> score (v${esc(SITE.vals.version)}, as of ${esc(SITE.vals.as_of)}), which measures agentic performance on finance, coding, legal and tax tasks. These are <strong>third-party scores</strong> published by Vals AI for hosted models; we did not run that benchmark, and the precision they served may differ from ours.</p>
+    <div class="seg" id="q-seg" role="group" aria-label="Quality score source"><button data-s="aa" aria-pressed="true">Artificial Analysis</button><button data-s="vals" aria-pressed="false">Vals Index</button></div>
+    <p class="desc" id="q-desc"></p>
     <div id="c-quality"></div>
     <p class="desc" id="q-missing"></p>
   </section>
@@ -301,9 +330,8 @@ function overview() {
           </ul>
   </section>`;
   scatter($("c-scatter"), null, {pts: speedPts(), yMax: Math.ceil(Math.max(...MODELS.map(m => m.tok1)) / 50) * 50, yStep: 50, yLabel: "Single-user tok/s", aria: "Single-user speed against GPU-hours to run the benchmark"});
-  scatter($("c-quality"), null, {pts: qualityPts(), yMax: 80, yStep: 10, yLabel: "Vals Index score (%)", aria: "Vals Index score against GPU-hours to run the benchmark"});
-  const noVals = MODELS.filter(m => !m.vals).map(m => m.label);
-  $("q-missing").textContent = noVals.length ? "Not plotted, because Vals does not list them: " + noVals.join(", ") + "." : "";
+  document.querySelectorAll("#q-seg button").forEach(b => b.onclick = () => { qsrc = b.dataset.s; renderQuality(); });
+  renderQuality();
   v.querySelectorAll("tr.row").forEach(r => r.addEventListener("click", () => go(r.dataset.k)));
 }
 
@@ -356,6 +384,7 @@ MODEL=${m.key} python3 scripts/collect_results.py   # after the serve job finish
     <p class="desc">${m.layout}. Weights ${load.weights_gib_per_gpu ? fmt(load.weights_gib_per_gpu, 1) + " GiB per GPU, " : ""}${load.load_seconds ? "loaded in about " + fmt(load.load_seconds) + " s. " : ""}${kv ? "KV cache " + fmt(kv) + " tokens, " + fmt(ctx, 1) + " concurrent 262k-token contexts." : ""}</p>
     <ul class="caveats">${[...m.caveats,
       "Short prompts only. Nothing here measures a 250k-token prompt.", m.repeat_pct ? `Run twice: the final run\'s output tok/s differed from the earlier run by ${m.repeat_pct.map(x => (x > 0 ? "+" : "") + x + "%").join(" / ")} at 1 / 16 / 64 users. The numbers shown are the final run.` : "One run, no repeats, so no error bars."].map(c => `<li>${c}</li>`).join("")}</ul>
+    <p class="meta">${m.aa ? `Artificial Analysis Intelligence Index (third-party, read ${esc(SITE.aa.as_of)}): <strong>${fmt(m.aa.score, 0)}</strong>, listed as &ldquo;${esc(m.aa.vals_name)}&rdquo;.${m.aa.note ? " " + esc(m.aa.note) : ""}` : "No Artificial Analysis score is listed for this model."}</p>
     <p class="meta">${m.vals ? `Vals Index v${esc(SITE.vals.version)} (third-party, ${esc(SITE.vals.as_of)}): <strong>${fmt(m.vals.score, 2)}%</strong>, listed as &ldquo;${esc(m.vals.vals_name)}&rdquo;.${m.vals.note ? " " + esc(m.vals.note) : ""}` : "No Vals Index score is listed for this model."}</p>
     <p class="meta">Revision <code>${esc(m.revision.slice(0, 12))}</code> &middot; ${prov}</p></section>`;
   columns($("c-throughput"), bench, "tps", d => `${d.c} concurrent: ${fmt(d.tps, 1)} tok/s aggregate`, m.tok1 < 20 ? 1 : 0);

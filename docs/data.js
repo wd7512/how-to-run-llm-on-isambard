@@ -127,6 +127,11 @@ window.SITE = {
     "score": 61.26,
     "vals_name": "DeepSeek V4.1 Flash 1017"
    },
+   "aa": {
+    "score": 33,
+    "vals_name": "DeepSeek V4.1 Flash 1017 Max",
+    "note": "Listed at Max reasoning effort."
+   },
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -256,6 +261,10 @@ window.SITE = {
     "score": 50.86,
     "vals_name": "GLM 5.3 Flash"
    },
+   "aa": {
+    "score": 28,
+    "vals_name": "GLM-5.3-Flash"
+   },
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -381,6 +390,11 @@ window.SITE = {
    "tok64": 1421.49,
    "tok1": 57.23,
    "vals": null,
+   "aa": {
+    "score": 20,
+    "vals_name": "Qwen3.8 27B Xhigh",
+    "note": "Listed at Xhigh reasoning effort."
+   },
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -508,6 +522,7 @@ window.SITE = {
    "tok64": 3982.67,
    "tok1": 193.77,
    "vals": null,
+   "aa": null,
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -638,6 +653,11 @@ window.SITE = {
     "vals_name": "MiMo V2.6 Flash",
     "note": "Vals lists 'MiMo V2.6 Flash'; we serve the -RL checkpoint, which may not be the same weights."
    },
+   "aa": {
+    "score": 27,
+    "vals_name": "MiMo-V2.6-Flash",
+    "note": "We serve the -RL checkpoint, which may not be the same weights."
+   },
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -764,6 +784,10 @@ window.SITE = {
    "tok64": 2647.4,
    "tok1": 154.07,
    "vals": null,
+   "aa": {
+    "score": 29,
+    "vals_name": "Qwen3.8-Flash-Next"
+   },
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -890,6 +914,11 @@ window.SITE = {
    "tok64": 1656.22,
    "tok1": 80.12,
    "vals": null,
+   "aa": {
+    "score": 4,
+    "vals_name": "Gemma 4 31B Reasoning",
+    "note": "This is the instruction-tuned Reasoning variant, not the base checkpoint we ran, and the entry has no cost or time data on the page, so the score may come from an incomplete evaluation."
+   },
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -1015,6 +1044,7 @@ window.SITE = {
    "tok64": 2599.91,
    "tok1": 206.72,
    "vals": null,
+   "aa": null,
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -1140,6 +1170,7 @@ window.SITE = {
    "tok64": 2714.46,
    "tok1": 220.06,
    "vals": null,
+   "aa": null,
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   },
@@ -1265,6 +1296,10 @@ window.SITE = {
     "vals_name": "Nemotron 3.5 Super VL",
     "note": "We serve the BF16 weights; the precision Vals used is not stated."
    },
+   "aa": {
+    "score": 14,
+    "vals_name": "Nemotron 3.5 Super VL"
+   },
    "sif": "vllm-0.33.0-arm64.sif",
    "image_ref": null
   }
@@ -1332,6 +1367,21 @@ window.SITE = {
    "gemma31b",
    "gemma26b",
    "ornith35b"
+  ]
+ },
+ "aa": {
+  "source": "https://artificialanalysis.ai/leaderboards/models",
+  "name": "Artificial Analysis Intelligence Index",
+  "as_of": "2026-11-16",
+  "as_of_note": "Date we read the leaderboard; the page shows no version or scoring date.",
+  "measures": "A composite of Artificial Analysis's evaluations of hosted models (the leaderboard column is headed \"Artificial Analysis Intelligence Index\"; scores on the page run from 2 to 65).",
+  "note": "Third-party scores for hosted models, often at a stated reasoning effort; we did not run these evaluations and the variant and precision they used may differ from the weights we serve.",
+  "not_listed": [
+   "flint",
+   "ornith35b"
+  ],
+  "listed_without_score": [
+   "gemma26b"
   ]
  }
 };
