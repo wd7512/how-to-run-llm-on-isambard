@@ -150,5 +150,38 @@
    "One GPU is enough: 65.5 GiB of weights leave a KV cache that holds about 3.4 full 262k-token contexts."
   ],
   "caveats": []
+ },
+ "minimax31": {
+  "order": 10,
+  "label": "MiniMax-M3.1-Flash",
+  "hf": "MiniMaxAI/MiniMax-M3.1-Flash",
+  "weights_gb": 252.4,
+  "summary": "Sparse MoE, 128 experts (4 active), mxfp8 + NVFP4 experts",
+  "status": "worked",
+  "description": "<code>MiniMaxAI/MiniMax-M3.1-Flash</code>: sparse mixture-of-experts with 128 experts (4 active), 1M-token context, mxfp8 with NVFP4 experts, 252 GB. Runs on one node of 4 GPUs.",
+  "notes": [
+   "Needs vLLM 0.33 or newer (the image has 0.33.0).",
+   "<code>--block-size 128</code> is mandatory for the sparse attention index cache (a mismatch fails with \"No common block size\").",
+   "Hopper has no FP4 tensor cores, so the NVFP4 experts run through the Marlin MoE kernel (<code>--moe-backend marlin</code>).",
+   "The vLLM recipe targets 8 x B300 GPUs with NVFP4 KV cache and speculative decoding; none of that is used here."
+  ],
+  "caveats": []
+ },
+ "nemotron35": {
+  "order": 11,
+  "label": "Nemotron 3.5 Super VL",
+  "hf": "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16",
+  "weights_gb": 248.9,
+  "summary": "Hybrid Mamba-Transformer MoE, 120B (12B active), BF16",
+  "status": "worked",
+  "description": "<code>nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16</code>: a hybrid Mamba-Transformer mixture-of-experts with 512 experts (about 12B of 120B parameters active), 1M-token context, BF16, 249 GB. A vision-language model; only text is measured here.",
+  "notes": [
+   "The BF16 repo is used, not the NVFP4 one: Hopper has no FP4 tensor cores.",
+   "Runs on one node of 4 GPUs (about 58 GiB of weights per GPU).",
+   "Uses the model card's parsers (<code>nemotron_v3</code> reasoning, <code>qwen3_coder</code> tools) and <code>--max-num-seqs 32</code>."
+  ],
+  "caveats": [
+   "Vision-language model benchmarked on text only; image and video input are not measured."
+  ]
  }
 }

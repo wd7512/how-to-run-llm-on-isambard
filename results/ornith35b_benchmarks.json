@@ -115,5 +115,7 @@
       64
     ],
     "note": "Earlier run of the same model (before the final pipeline run), kept to show run-to-run variation."
-  }
+  },
+  "config_hash": "246bfcea2930b6ea",
+  "config_hash_note": "Stamped after the run: the settings and run version 1 (measurement logic unchanged since) match this result."
 }

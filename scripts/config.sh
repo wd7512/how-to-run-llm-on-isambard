@@ -16,5 +16,9 @@ export MODEL_DIR="$SCRATCHDIR/models/$(basename "$MODEL_REPO")"
 export IMAGE_REF="docker://vllm/vllm-openai@sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c"
 export SIF="$SCRATCHDIR/containers/vllm-0.33.0-arm64.sif"
 
+# Bump when node_entry.sh or the benchmark changes in a way that affects results; it invalidates every
+# model's "up to date" check (scripts/confighash.py), so run.sh re-runs them.
+export RUN_VERSION=1
+
 export HF_VENV="$SCRATCHDIR/envs/hfdl"
 export HF_HOME="$SCRATCHDIR/hf"

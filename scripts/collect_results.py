@@ -105,7 +105,7 @@ def main():
         "system": "Isambard-AI Phase 2, %d x GH200 (96 GiB HBM each), %d node%s" % (gpus, meta["nodes"], "" if meta["nodes"] == 1 else "s"),
         "software": {"vllm": meta["vllm"], "torch": meta["torch"], "cuda": meta["cuda"], "image": meta["image"]},
         "layout": "TP%d x DP%d%s, %d node(s)" % (meta["tp"], meta["dp_per_node"] * meta["nodes"], " + expert-parallel" if meta["ep"] else "", meta["nodes"]),
-        "vllm_args": meta["extra_args"], "serve_command": meta.get("serve_command"), "worker_command": meta.get("worker_command"), "env": meta.get("env", {}), "gpus": gpus, "job_ids": {"download": download, "build": build, "serve": serve},
+        "config_hash": meta.get("config_hash"), "startup_s": meta.get("startup_s"), "vllm_args": meta["extra_args"], "serve_command": meta.get("serve_command"), "worker_command": meta.get("worker_command"), "env": meta.get("env", {}), "gpus": gpus, "job_ids": {"download": download, "build": build, "serve": serve},
         "workload": {"tool": "vllm bench serve", "dataset": "random", "input_tokens_per_request": 1024,
                      "output_tokens_per_request": 256, "seed": 0, "requests_per_level": "4 x concurrency"},
         "load": load, "results": results,
@@ -121,6 +121,11 @@ def main():
     os.makedirs(os.path.dirname(path), exist_ok=True)
     json.dump(out, open(path, "w"), indent=2)
     print("wrote", path)
+    job_s = (steps["serve"] or 0) * 3600 / gpus
+    if meta.get("startup_s") and job_s:
+        cap = max(600, int(job_s * 2.5 / 60 + 1) * 60)
+        print("suggested caps (2.5x measured) for scripts/models/%s.env:  STARTUP_DEADLINE_S=%d  TIME_LIMIT=%02d:%02d:00" %
+              (a.model, max(300, int(meta["startup_s"] * 2.5 / 10 + 1) * 10), cap // 3600, cap % 3600 // 60))
     print(json.dumps({"results": [(r["concurrency"], r["output_tok_s"]) for r in results], "gpu_hours": out["gpu_hours"],
                       "per_1m": out["cost_metric"]["gpu_hours_per_1m_output_tokens"], "input_tokens_64": top["total_input_tokens"],
                       "output_tokens_64": top["total_output_tokens"]}))

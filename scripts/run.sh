@@ -7,6 +7,19 @@ cd "$(dirname "$0")/.."
 source scripts/config.sh
 mkdir -p logs
 
+module load cray-python/3.11.7 2>/dev/null || true
+
+# 1. Skip a model whose settings, image and run version are unchanged since its last recorded run (FORCE=1 overrides).
+HASH=$(python3 scripts/confighash.py "$MODEL")
+RES="results/${MODEL}_benchmarks.json"
+if [ "${FORCE:-0}" != "1" ] && [ -f "$RES" ] && [ "$(python3 -c "import json;print(json.load(open('$RES')).get('config_hash',''))")" = "$HASH" ]; then
+  echo "$MODEL is up to date (config hash $HASH matches $RES): nothing to run. FORCE=1 to run anyway."
+  exit 0
+fi
+
+# 2. CPU-only checks before any GPU-hours are spent.
+python3 scripts/preflight.py || { echo "preflight failed: fix the FAIL lines above (no GPU job was submitted)"; exit 1; }
+
 bash scripts/00_setup_login_node.sh >/dev/null
 
 DEPS=""; DL=none; BD=none

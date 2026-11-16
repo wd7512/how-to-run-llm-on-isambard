@@ -22,6 +22,9 @@ export DG_JIT_CACHE_DIR=$LC/deep_gemm TRITON_CACHE_DIR=$LC/triton \
 mkdir -p "$DG_JIT_CACHE_DIR" "$TRITON_CACHE_DIR" "$VLLM_CACHE_ROOT" \
          "$TORCHINDUCTOR_CACHE_DIR" "$XDG_CACHE_HOME"
 
+# Per-model environment variables from the model's file (e.g. EXTRA_ENV="VLLM_FLOAT32_MATMUL_PRECISION=high").
+[ -n "${EXTRA_ENV:-}" ] && export $EXTRA_ENV
+
 # --- Fix 3: some models JIT-compile attention kernels on first start (FlashInfer, several
 # minutes per rank). vLLM gives up after 600 s by default; the GLM-5.3 vLLM recipe uses 3600.
 export VLLM_ENGINE_READY_TIMEOUT_S=3600
@@ -47,13 +50,20 @@ echo "node $SLURM_NODEID host $(hostname) ip $VLLM_HOST_IP head $HEAD_NODE"
 if [ "$SLURM_NODEID" = "0" ]; then
   vllm serve $COMMON --port 8000 > "$REPO_DIR/logs/vllm_serve_$SLURM_JOB_ID.log" 2>&1 &
   SP=$!
-  # Wait for the server, but stop at once if it crashed (otherwise the job idles).
-  for i in $(seq 1 240); do
-    curl -sf localhost:8000/health >/dev/null 2>&1 && break
+  # Wait for the server. Stop at once if it crashed, and give up at STARTUP_DEADLINE_S (a few times the measured
+  # start-up time) instead of idling on every GPU until the job's time cap.
+  DEADLINE=${STARTUP_DEADLINE_S:-1200}; T0=$SECONDS
+  until curl -sf localhost:8000/health >/dev/null 2>&1; do
     kill -0 $SP 2>/dev/null || { echo "SERVER DIED"; touch "$RUN_DIR/DONE"; exit 1; }
-    sleep 10
+    if [ $((SECONDS - T0)) -ge "$DEADLINE" ]; then
+      echo "STARTUP DEADLINE (${DEADLINE}s) EXCEEDED - aborting to save GPU-hours"
+      touch "$RUN_DIR/DONE"; pkill -f "vllm serve"; exit 1
+    fi
+    sleep 5
   done
-  echo "=== server up $(date) ==="
+  export STARTUP_S=$((SECONDS - T0))
+  echo "=== server up $(date) (start-up ${STARTUP_S}s) ==="
+  export CONFIG_HASH=$(python3 "$REPO_DIR/scripts/confighash.py" "$MODEL")
 
   python3 - > "$RUN_DIR/meta.json" <<PY
 import json, os, re, vllm, torch
@@ -62,8 +72,9 @@ def clean(t):  # drop machine-specific names so the recorded command is portable
     return " ".join(t.split())
 ENV = ["HF_HUB_OFFLINE", "TRITON_LIBCUDA_PATH", "VLLM_ENGINE_READY_TIMEOUT_S", "DG_JIT_CACHE_DIR", "TRITON_CACHE_DIR",
        "VLLM_CACHE_ROOT", "TORCHINDUCTOR_CACHE_DIR", "XDG_CACHE_HOME"]
-env = {k: re.sub(r"/local/user/\\d+/cache_\\d+", "/local/<node-local-cache>", os.environ[k]) for k in ENV if k in os.environ}
-print(json.dumps({"serve_command": clean(os.environ["SERVE_CMD"]), "worker_command": clean(os.environ["WORKER_CMD"]) if int(os.environ["NODES"]) > 1 else None, "env": env,"model": os.environ["MODEL"], "repo": os.environ["MODEL_REPO"], "revision": os.environ["MODEL_REVISION"],
+env = {kv.split("=")[0]: kv.split("=", 1)[1] for kv in os.environ.get("EXTRA_ENV", "").split()}
+env.update({k: re.sub(r"/local/user/\\d+/cache_\\d+", "/local/<node-local-cache>", os.environ[k]) for k in ENV if k in os.environ})
+print(json.dumps({"serve_command": clean(os.environ["SERVE_CMD"]), "worker_command": clean(os.environ["WORKER_CMD"]) if int(os.environ["NODES"]) > 1 else None, "env": env,"config_hash": os.environ.get("CONFIG_HASH"), "startup_s": int(os.environ.get("STARTUP_S", 0)), "model": os.environ["MODEL"], "repo": os.environ["MODEL_REPO"], "revision": os.environ["MODEL_REVISION"],
   "served_name": os.environ["SERVED_NAME"], "vllm": vllm.__version__, "torch": torch.__version__, "cuda": torch.version.cuda,
   "image": os.environ["IMAGE_REF"], "job_id": os.environ["SLURM_JOB_ID"], "nodes": int(os.environ["NODES"]),
   "gpus_per_node": int(os.environ["GPUS"]), "tp": int(os.environ["TP"]), "dp_per_node": int(os.environ["DP_PER_NODE"]),
